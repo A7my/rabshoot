@@ -82,10 +82,13 @@ opens the right page for you. You can change everything later.
   already passed and press **Send the report of …**. RabShoot collects that day's commits and Slack
   messages and sends the report to the usual recipients. You can build a preview of that day first on
   the same page. Normal **Send now**, **Preview** and the schedule always use today.
-- **Edit before sending:** after **Build preview** (or a test), press **Edit report**. Change the
-  subject, add a note at the top, and edit, add, remove or mark as *Major* any point. Or type what
-  you want in **Edit with AI** (for example "make it shorter" or "add that I reviewed Ahmed's pull
-  request"); it uses the report's own AI account, and **Undo AI change** takes it back. The email
+- **Edit before sending:** after **Build preview** (or a test), press **Edit report**. The whole
+  email opens as text in **Email text**: change, add or delete anything, like in any text box (lines
+  starting with `##` are section headings, `###` project names, `•` points, and `[Major]` marks a big
+  change). Or press **Improve with AI**: it rewrites the email nicely and briefly, fixes spelling
+  and puts things in a sensible order. You can also tell it something specific first (for example
+  "add that I reviewed Ahmed's pull request"). It uses the report's own AI account, **Undo AI
+  change** takes it back, and **Back to the original** throws away all your changes. The email
   below updates as you type. **Send this version to me** sends the edited copy only to you, and
   **Send to recipients** sends it for real after you confirm. That counts as the day's send, so the
   scheduled one is skipped, just like **Send now**. Scheduled sends still go out without editing.

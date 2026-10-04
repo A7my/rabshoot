@@ -43,6 +43,7 @@ export function PreviewPanel({ profileId, senderAddress, day, canSend = true }: 
   const [progress, setProgress] = useState<RunProgress | null>(null);
 
   const [draft, setDraft] = useState<{ id: string; content: DraftContent } | null>(null);
+  const [original, setOriginal] = useState<DraftContent | null>(null);
   const [html, setHtml] = useState("");
   const [editing, setEditing] = useState(false);
   const [edited, setEdited] = useState(false);
@@ -68,6 +69,7 @@ export function PreviewPanel({ profileId, senderAddress, day, canSend = true }: 
       const r = kind === "preview" ? await api.preview(profileId, day) : await api.testSend(profileId, senderAddress, day);
       setResult(r);
       setDraft(r.draft ?? null);
+      setOriginal(r.draft?.content ?? null);
       setHtml(r.html ?? "");
       setEdited(false);
       if (r.status === "failed") setError(r.error);
@@ -189,7 +191,9 @@ export function PreviewPanel({ profileId, senderAddress, day, canSend = true }: 
             </Alert>
           )}
 
-          {draft && editing && <ReportEditor draftId={draft.id} content={draft.content} onChange={changeContent} />}
+          {draft && original && editing && (
+            <ReportEditor draftId={draft.id} content={draft.content} original={original} onChange={changeContent} />
+          )}
           {html && <EmailFrame html={html} />}
         </>
       )}

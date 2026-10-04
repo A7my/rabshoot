@@ -51,7 +51,7 @@ class DraftIn(BaseModel):
 
 
 class DraftAIIn(DraftIn):
-    instruction: str
+    instruction: str = ""
 
 
 class DraftSendIn(DraftIn):
@@ -389,10 +389,9 @@ def create_app(token: str, scheduler: Scheduler | None = None) -> FastAPI:
         return draft, get_prof(draft.profile_id)
 
     def draft_view(profile: Profile, draft: drafts.Draft, content: drafts.DraftContent) -> dict:
-        projects, convs = drafts.apply(draft, content)
         window = DayWindow.for_day(draft.day, profile.schedule.timezone)
-        report = render_report(profile, window, projects, convs, note=content.note,
-                               subject=content.subject)
+        report = render_report(profile, window, draft.projects, draft.conversations,
+                               subject=content.subject, body=draft.edited_body(content))
         return {"html": report.html_for_display(), "subject": report.subject, "stats": report.stats}
 
     @app.post("/drafts/{draft_id}/render", dependencies=guarded)
@@ -403,19 +402,19 @@ def create_app(token: str, scheduler: Scheduler | None = None) -> FastAPI:
     @app.post("/drafts/{draft_id}/ai", dependencies=guarded)
     def ai_edit_draft(draft_id: str, body: DraftAIIn):
         draft, profile = get_draft(draft_id)
-        if not body.instruction.strip():
-            raise HTTPException(400, "Write what the AI should change")
+        if not body.content.body.strip():
+            raise HTTPException(400, "The email text is empty")
         try:
             conn = storage.get_connection(profile.ai_connection_id or "")
         except KeyError:
             raise HTTPException(400, "This report has no AI account. Add one in the report's AI tab.")
         try:
-            answer = connectors.ai_client(conn, profile.report.language).edit_report(
-                body.content.model_dump(), body.instruction)
+            text = connectors.ai_client(conn, profile.report.language).polish_report(
+                body.content.body, body.instruction)
         except Exception as exc:
             log.warning("AI edit failed: %s", exc)
             fail(exc)
-        content = drafts.merge_ai(body.content, answer)
+        content = body.content.model_copy(update={"body": text})
         return {"content": content.model_dump(), **draft_view(profile, draft, content)}
 
     @app.post("/drafts/{draft_id}/send", dependencies=guarded)

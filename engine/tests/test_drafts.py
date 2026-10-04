@@ -1,20 +1,20 @@
 import copy
-from datetime import date
 
 import pytest
 from fastapi.testclient import TestClient
 
 from rabshoot_engine import connectors, drafts, history, pipeline, storage
+from rabshoot_engine.ai import AIClient
 from rabshoot_engine.api import create_app
 from rabshoot_engine.drafts import DraftContent
 from rabshoot_engine.mail import smtp
 from rabshoot_engine.models import Profile, Schedule
+from rabshoot_engine.render import parse_blocks
 
 ME = "me@x.com"
 PROJECT = {"name": "api", "source": "gitlab", "url": "https://git.x/api", "files": [],
            "commits": [{"title": "fix", "author": "me", "url": "https://git.x/c", "short_id": "abc1"}],
            "merge_requests": [], "issues": [], "changes": ["Fixed the login timeout"]}
-CONV = {"name": "#team", "threads": [{}], "message_count": 2, "points": ["Release moves to Monday"]}
 
 
 @pytest.fixture
@@ -29,7 +29,7 @@ def mail(monkeypatch):
     monkeypatch.setattr(pipeline, "summarize", lambda *a, **k: None)
     monkeypatch.setattr(smtp, "send", lambda meta, pw, msg, to: sent.append((msg, to)))
     monkeypatch.setattr(pipeline, "collect_code", lambda *a: [copy.deepcopy(PROJECT)])
-    monkeypatch.setattr(pipeline, "collect_slack", lambda *a: [copy.deepcopy(CONV)])
+    monkeypatch.setattr(pipeline, "collect_slack", lambda *a: [])
     return sent
 
 
@@ -42,21 +42,19 @@ def _html(msg) -> str:
     return msg.get_body(("html",)).get_content()
 
 
-def test_preview_returns_an_editable_draft(mail):
+def test_preview_returns_the_email_as_editable_text(mail):
     result = pipeline.run(_profile(), trigger="preview", send=False)
     content = result.as_dict(include_html=True)["draft"]["content"]
-    assert [(i["key"], i["points"]) for i in content["items"]] == [
-        ("p0", ["Fixed the login timeout"]), ("c0", ["Release moves to Monday"])]
     assert content["subject"] and not mail
+    assert "## Code changes" in content["body"] and "### api" in content["body"]
+    assert "• Fixed the login timeout" in content["body"]
 
 
-def test_edited_draft_is_sent_as_edited_and_counts_as_todays_send(mail):
+def test_edited_text_is_sent_and_counts_as_todays_send(mail):
     profile = _profile()
     preview = pipeline.run(profile, trigger="preview", send=False)
-    content = DraftContent(**preview.draft["content"])
-    content.items[0].points = ["[Major] Rewrote the login flow", "  "]
-    content.note = "Off tomorrow.\nBack Sunday."
-    content.subject = "My day"
+    content = DraftContent(subject="My day", body=(
+        "Off tomorrow.\nBack Sunday.\n\n## Code changes\n### api\n• [Major] Rewrote the login flow\n"))
 
     result = pipeline.send_draft(profile, drafts.get(preview.draft["id"]), content)
 
@@ -64,12 +62,19 @@ def test_edited_draft_is_sent_as_edited_and_counts_as_todays_send(mail):
     msg, to = mail[-1]
     assert to == ["team@x.com"] and msg["Subject"] == "My day"
     html = _html(msg)
-    assert "Rewrote the login flow" in html and "Fixed the login timeout" not in html
-    assert "Off tomorrow.<br>Back Sunday." in html
+    assert "Rewrote the login flow" in html and "MAJOR" in html
+    assert "Fixed the login timeout" not in html and "Off tomorrow.<br>Back Sunday." in html
+    assert "CODE CHANGES" in msg.get_body(("plain",)).get_content()
     assert "edited before sending" in result.steps[-1]["message"]
     run = history.get_run(result.run_id)
-    assert run["trigger"] == "manual" and run["status"] == "sent"
-    assert history.sent_for_day(profile.id, run["report_day"])
+    assert run["trigger"] == "manual" and history.sent_for_day(profile.id, run["report_day"])
+
+
+def test_unchanged_text_keeps_the_original_layout(mail):
+    profile = _profile()
+    preview = pipeline.run(profile, trigger="preview", send=False)
+    pipeline.send_draft(profile, drafts.get(preview.draft["id"]), DraftContent(**preview.draft["content"]))
+    assert 'href="https://git.x/api"' in _html(mail[-1][0])
 
 
 def test_draft_test_send_goes_only_to_me(mail):
@@ -82,24 +87,24 @@ def test_draft_test_send_goes_only_to_me(mail):
     assert not history.sent_for_day(profile.id, history.get_run(result.run_id)["report_day"])
 
 
-def test_apply_keeps_raw_data_unless_points_are_added():
-    raw = {k: v for k, v in PROJECT.items() if k != "changes"}
-    draft = drafts.save("prof", date(2026, 1, 1), "S", [raw], [], [])
-    projects, _ = drafts.apply(draft, draft.content)
-    assert "changes" not in projects[0]
-    draft.content.items[0].points = ["Added by hand"]
-    projects, _ = drafts.apply(draft, draft.content)
-    assert projects[0]["changes"] == ["Added by hand"]
-    assert "changes" not in draft.projects[0]
+def test_parse_blocks():
+    blocks = parse_blocks("Hello\nteam\n\nSecond\n## Code\n### api\n• one\n- two\n## Slack\n")
+    assert [b["type"] for b in blocks] == ["p", "p", "h2", "h3", "list", "h2"]
+    assert blocks[0]["lines"] == ["Hello", "team"] and blocks[4]["items"] == ["one", "two"]
+    assert blocks[2]["color"] != blocks[5]["color"]
 
 
-def test_merge_ai_takes_known_items_only():
-    content = DraftContent(subject="S", items=[drafts.DraftItem(key="p0", points=["a"]),
-                                               drafts.DraftItem(key="c0", points=["b"])])
-    merged = drafts.merge_ai(content, {"subject": "New", "note": "Hi", "items": [
-        {"key": "p0", "points": ["a shorter"]}, {"key": "zz", "points": ["invented"]}]})
-    assert merged.subject == "New" and merged.note == "Hi"
-    assert [i.points for i in merged.items] == [["a shorter"], ["b"]]
+def test_polish_strips_code_fences_and_passes_the_request(monkeypatch):
+    seen = {}
+
+    def chat(self, prompt, system=None, waits=None):
+        seen["prompt"] = prompt
+        return "```text\n## Code changes\n• Fixed login.\n```"
+
+    monkeypatch.setattr(AIClient, "chat", chat)
+    text = AIClient("k").polish_report("## code\n• fixd login", "add a greeting")
+    assert text == "## Code changes\n• Fixed login.\n"
+    assert "add a greeting" in seen["prompt"] and "fixd login" in seen["prompt"]
 
 
 def test_draft_api_render_ai_and_expiry(mail, monkeypatch):
@@ -110,20 +115,20 @@ def test_draft_api_render_ai_and_expiry(mail, monkeypatch):
     did, content = preview.draft["id"], preview.draft["content"]
     c = TestClient(create_app("t"), headers={"Authorization": "Bearer t"})
 
-    content["note"] = "Short day"
+    content["body"] = "Short day today."
     r = c.post(f"/drafts/{did}/render", json={"content": content})
-    assert r.status_code == 200 and "Short day" in r.json()["html"]
+    assert r.status_code == 200 and "Short day today." in r.json()["html"]
 
     class FakeAI:
-        def edit_report(self, report, instruction):
-            assert instruction == "shorter" and report["items"][0]["key"] == "p0"
-            return {"items": [{"key": "p0", "points": ["Login fixed"]}]}
+        def polish_report(self, body, instruction=""):
+            assert body == "Short day today." and instruction == ""
+            return "A short day today.\n"
 
     monkeypatch.setattr(connectors, "ai_client", lambda conn, language: FakeAI())
-    r = c.post(f"/drafts/{did}/ai", json={"content": content, "instruction": "shorter"})
+    r = c.post(f"/drafts/{did}/ai", json={"content": content})
     assert r.status_code == 200
-    assert r.json()["content"]["items"][0]["points"] == ["Login fixed"]
-    assert "Login fixed" in r.json()["html"]
+    assert r.json()["content"]["body"] == "A short day today.\n" and "A short day today." in r.json()["html"]
 
-    assert c.post(f"/drafts/{did}/ai", json={"content": content, "instruction": " "}).status_code == 400
+    content["body"] = " "
+    assert c.post(f"/drafts/{did}/ai", json={"content": content}).status_code == 400
     assert c.post("/drafts/nope/render", json={"content": content}).status_code == 404

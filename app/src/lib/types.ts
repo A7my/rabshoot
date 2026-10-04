@@ -168,17 +168,9 @@ export interface RunResult {
   draft?: { id: string; content: DraftContent };
 }
 
-export interface DraftItem {
-  key: string;
-  kind: "project" | "conversation";
-  name: string;
-  points: string[];
-}
-
 export interface DraftContent {
   subject: string;
-  note: string;
-  items: DraftItem[];
+  body: string;
 }
 
 export interface DraftView {

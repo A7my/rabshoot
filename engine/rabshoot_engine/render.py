@@ -58,7 +58,6 @@ def _env(html: bool) -> Environment:
                       trim_blocks=True, lstrip_blocks=True, keep_trailing_newline=True)
     env.filters["oneline"] = _oneline
     env.filters["codify"] = _codify
-    env.filters["nl2br"] = lambda text: Markup(str(escape(text)).replace("\n", "<br>"))
     return env
 
 
@@ -98,17 +97,79 @@ def build_context(profile: Profile, window: DayWindow, projects: list[dict],
     }
 
 
-def render(profile: Profile, window: DayWindow, projects: list[dict],
-           conversations: list[dict], note: str = "", subject: str = "") -> Report:
-    """note: the author's own text at the top; subject: an edited subject instead of the template."""
+def editable_text(profile: Profile, window: DayWindow, projects: list[dict],
+                  conversations: list[dict]) -> str:
+    """The report body as plain text the author can edit (format: see parse_blocks)."""
     context = build_context(profile, window, projects, conversations)
-    context["note"] = note.strip()
+    text = _env(False).get_template("report.edit.j2").render(**context)
+    return re.sub(r"\n{3,}", "\n\n", text).strip() + "\n"
+
+
+_HEADING_COLORS = ("#2F7BFF", "#7C3AED", "#10B981", "#F59E0B")
+_BULLET = re.compile(r"^\s*[•\-*]\s+")
+
+
+def parse_blocks(body: str) -> list[dict]:
+    """'## ' section heading, '### ' project or chat name, '• '/'- ' bullet, anything else a paragraph."""
+    blocks: list[dict] = []
+    sections = 0
+    for raw in body.splitlines():
+        line = raw.strip()
+        last = blocks[-1] if blocks else None
+        if not line:
+            if last and last["type"] == "p":
+                last["closed"] = True
+            continue
+        if line.startswith("### "):
+            blocks.append({"type": "h3", "text": line[4:].strip()})
+        elif line.startswith("## ") or line.startswith("# "):
+            blocks.append({"type": "h2", "text": line.lstrip("#").strip(),
+                           "color": _HEADING_COLORS[sections % len(_HEADING_COLORS)]})
+            sections += 1
+        elif _BULLET.match(line):
+            item = _BULLET.sub("", line)
+            if last and last["type"] == "list":
+                last["items"].append(item)
+            else:
+                blocks.append({"type": "list", "items": [item]})
+        elif last and last["type"] == "p" and not last.get("closed"):
+            last["lines"].append(line)
+        else:
+            blocks.append({"type": "p", "lines": [line]})
+    return blocks
+
+
+def _plain(body: str) -> str:
+    lines = []
+    for raw in body.strip().splitlines():
+        line = raw.strip()
+        if line.startswith("### "):
+            line = line[4:].strip()
+        elif line.startswith("#"):
+            line = line.lstrip("#").strip().upper()
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def render(profile: Profile, window: DayWindow, projects: list[dict],
+           conversations: list[dict], subject: str = "", body: str | None = None) -> Report:
+    """subject: an edited subject instead of the template; body: edited text shown instead of the
+    generated sections (header, numbers and footer stay)."""
+    context = build_context(profile, window, projects, conversations)
     subject = subject.strip() or (profile.delivery.subject or "{title} — {date}").replace(
         "{title}", context["title"]).replace("{date}", context["date_iso"])
+    if body is not None:
+        context.update(blocks=parse_blocks(body), ai=False,
+                       show_stats=any(context["stats"][k] for k in
+                                      ("projects", "commits", "merged", "slack_messages")))
+        footer = "\n\n— Sent with RabShoot\n" if context["branding"] else "\n"
+        text = f"{context['title']} — {context['date']}\n\n{_plain(body)}{footer}"
+    else:
+        text = _env(False).get_template("report.md.j2").render(**context).strip() + "\n"
     return Report(
         title=context["title"],
         subject=subject,
-        text=_env(False).get_template("report.md.j2").render(**context).strip() + "\n",
+        text=text,
         html=_env(True).get_template("report.html.j2").render(**context).strip() + "\n",
         branding=profile.report.branding,
         stats=context["stats"],

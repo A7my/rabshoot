@@ -118,7 +118,7 @@ export const api = {
     request<{ running: boolean; progress: RunProgress | null }>("GET", `/profiles/${id}/progress`),
   draftRender: (id: string, content: DraftContent) =>
     request<DraftView>("POST", `/drafts/${id}/render`, { content }),
-  draftAI: (id: string, content: DraftContent, instruction: string) =>
+  draftAI: (id: string, content: DraftContent, instruction = "") =>
     request<DraftView & { content: DraftContent }>("POST", `/drafts/${id}/ai`, { content, instruction }),
   draftSend: (id: string, content: DraftContent, test = false, to?: string) =>
     request<RunResult>("POST", `/drafts/${id}/send`, { content, test, to }),

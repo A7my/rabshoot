@@ -13,7 +13,7 @@ from . import connectors, drafts, history, storage
 from .ai import enrich
 from .mail import imap, smtp
 from .models import CODE_TYPES, Profile, now_iso, profile_problems
-from .render import LOGO_CID, Report, logo_bytes, render
+from .render import LOGO_CID, Report, editable_text, logo_bytes, render
 from .sources import github as github_source
 from .sources import gitlab as gitlab_source
 from .sources import slack as slack_source
@@ -170,7 +170,7 @@ def build_message(plan: EmailPlan, report: Report, sender_name: str) -> EmailMes
 
 
 def _deliver(profile: Profile, result: RunResult, test_to: str | None = None,
-             plan: EmailPlan | None = None, note: str = "") -> None:
+             plan: EmailPlan | None = None, suffix: str = "") -> None:
     """Email result.report to the report's recipients (or only to test_to) and record the step."""
     try:
         conn = storage.get_connection(profile.sender_connection_id or "")
@@ -186,7 +186,7 @@ def _deliver(profile: Profile, result: RunResult, test_to: str | None = None,
                             or meta.get("display_name", ""))
         smtp.send(meta, password, msg, plan.to + plan.cc + plan.bcc)
         result.subject, result.recipients = plan.subject, plan.to + plan.cc
-        result.step("email", "ok", _sent_message(plan) + note)
+        result.step("email", "ok", _sent_message(plan) + suffix)
         result.status = "sent"
     except Exception as exc:
         log.exception("Sending failed")
@@ -397,7 +397,8 @@ def run(profile: Profile, trigger: str = "manual", day: date | None = None,
             _deliver(profile, result, test_to, plan=early_plan)
 
         if trigger in ("preview", "test"):
-            draft = drafts.save(profile.id, tz_day, result.report.subject, result.projects,
+            body = editable_text(profile, window, result.projects, result.conversations)
+            draft = drafts.save(profile.id, tz_day, result.report.subject, body, result.projects,
                                 result.conversations, result.steps)
             result.draft = {"id": draft.id, "content": draft.content.model_dump()}
 
@@ -435,12 +436,12 @@ def send_draft(profile: Profile, draft: drafts.Draft, content: drafts.DraftConte
             return RunResult(status="failed", error="Setup incomplete: " + ", ".join(problems))
         run_id = history.start_run(profile.id, profile.name, "test" if test_to else "manual",
                                    draft.day.isoformat())
-        projects, convs = drafts.apply(draft, content)
         window = DayWindow.for_day(draft.day, profile.schedule.timezone)
-        report = render(profile, window, projects, convs, note=content.note, subject=content.subject)
+        report = render(profile, window, draft.projects, draft.conversations,
+                        subject=content.subject, body=draft.edited_body(content))
         result = RunResult(steps=[dict(s) for s in draft.steps], report=report,
                            subject=report.subject, run_id=run_id)
-        _deliver(profile, result, test_to, note=" — edited before sending")
+        _deliver(profile, result, test_to, suffix=" — edited before sending")
         history.finish_run(run_id, result.status, error=result.error, subject=result.subject,
                            recipients=result.recipients, steps=result.steps,
                            html=report.html_for_display(), text=report.text)
