@@ -11,6 +11,10 @@
 </p>
 
 <p align="center">
+  Developed by <a href="https://linkedin.com/in/mohamed-3zmy/"><b>Mohamed Azmy</b></a>
+</p>
+
+<p align="center">
   <a href="https://github.com/A7my/rabshoot/releases/latest/download/RabShoot-windows-x64-setup.exe"><b>⬇ Download for Windows</b></a>
   &nbsp;·&nbsp;
   <a href="https://github.com/A7my/rabshoot/releases/latest/download/RabShoot-linux-amd64.deb"><b>⬇ Download for Linux (.deb)</b></a>
@@ -202,12 +206,19 @@ runs on Ubuntu 22.04+ / Debian 12+, build it in Docker: `scripts/build_linux_deb
 ### Publish a release
 
 GitHub Actions (`.github/workflows/build.yml`) tests the engine and builds the Windows and Linux
-installers on every push. To publish a version:
+installers on every push. To publish a version, set the new version number everywhere it is written,
+then push a tag:
 
 ```bash
-git tag v0.1.0 && git push origin v0.1.0
+python scripts/bump_version.py 0.1.5
+git commit -am "v0.1.5" && git tag v0.1.5 && git push origin main v0.1.5
 ```
 
 The workflow creates the GitHub release and attaches the installers under fixed names
 (`RabShoot-windows-x64-setup.exe`, `RabShoot-linux-amd64.deb`), so the download links at the top of
 this page always point to the newest version.
+
+## Author
+
+RabShoot is designed and developed by **Mohamed Azmy**:
+[LinkedIn](https://linkedin.com/in/mohamed-3zmy/) · [GitHub](https://github.com/A7my).

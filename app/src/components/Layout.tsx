@@ -2,7 +2,12 @@ import { History, KeyRound, LayoutDashboard, Plus, Settings } from "lucide-react
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { NavLink, useNavigate } from "react-router-dom";
+import { openUrl } from "../lib/platform";
 import { cn } from "../lib/utils";
+
+export const AUTHOR = "Mohamed Azmy";
+export const AUTHOR_URL = "https://linkedin.com/in/mohamed-3zmy/";
+export const PROJECT_URL = "https://github.com/A7my/rabshoot";
 
 export function Brand({ size = "md" }: { size?: "md" | "lg" }) {
   const { t } = useTranslation();
@@ -46,7 +51,12 @@ export function Layout({ children }: { children: ReactNode }) {
             </NavLink>
           ))}
         </nav>
-        <div className="mt-auto px-1 text-[11px] text-muted/70">v0.1.0</div>
+        <div className="mt-auto space-y-0.5 px-1 text-[11px] text-muted/70">
+          <div>v{__APP_VERSION__}</div>
+          <button type="button" onClick={() => openUrl(AUTHOR_URL)} className="hover:text-primary hover:underline">
+            {t("app.by", { name: AUTHOR })}
+          </button>
+        </div>
       </aside>
       <main className="min-w-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-5xl px-8 py-8">{children}</div>

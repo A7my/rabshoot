@@ -1,7 +1,7 @@
 import type { Dict } from "./en";
 
 const ar: Dict = {
-  app: { tagline: "اجمع • ادمج • أرسل" },
+  app: { tagline: "اجمع • ادمج • أرسل", by: "تطوير {{name}}" },
   common: {
     next: "التالي", back: "رجوع", skip: "تخطي هذه الخطوة", save: "حفظ", saved: "تم الحفظ", cancel: "إلغاء",
     delete: "حذف", edit: "تعديل", test: "اختبار", retry: "حاول مرة أخرى", close: "إغلاق", open: "فتح",
@@ -267,7 +267,7 @@ const ar: Dict = {
     title: "الإعدادات", language: "اللغة", autostart: "تشغيل RabShoot عند تسجيل الدخول",
     notifications: "إظهار إشعار عند إرسال التقرير أو فشله",
     catchUp: "إرسال التقارير الفائتة عند تشغيل الجهاز (افتراضي للتقارير الجديدة)",
-    pauseAll: "إيقاف كل التقارير مؤقتًا", about: "عن التطبيق", version: "الإصدار", secrets: "تخزين الأسرار",
+    pauseAll: "إيقاف كل التقارير مؤقتًا", about: "عن التطبيق", version: "الإصدار", developedBy: "تطوير", secrets: "تخزين الأسرار",
     keychain: "خزنة النظام", file: "ملف خاص", rerunWizard: "تشغيل معالج الإعداد مرة أخرى",
     dataFolder: "بياناتك محفوظة على هذا الجهاز فقط.",
     configPath: "الإعدادات", dataPath: "السجل والتقارير", logsPath: "السجلات التقنية",

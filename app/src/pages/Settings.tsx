@@ -1,12 +1,12 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, FolderOpen, Languages, ShieldCheck, Wand2 } from "lucide-react";
+import { Copy, FolderOpen, Github, Languages, Linkedin, ShieldCheck, Wand2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { Brand } from "../components/Layout";
+import { AUTHOR, AUTHOR_URL, Brand, PROJECT_URL } from "../components/Layout";
 import { Button, Card, PageHeader, Spinner, Switch } from "../components/ui";
 import { applyLanguage } from "../i18n";
 import { api } from "../lib/api";
-import { copyText, setAutostart } from "../lib/platform";
+import { copyText, openUrl, setAutostart } from "../lib/platform";
 import type { Settings as SettingsT } from "../lib/types";
 import { cn } from "../lib/utils";
 
@@ -54,12 +54,18 @@ export function Settings() {
         <div className="text-sm font-semibold">{t("settings.about")}</div>
         <Brand />
         <div className="grid gap-2 text-sm sm:grid-cols-2">
-          <div><span className="text-muted">{t("settings.version")}: </span>{health?.version ?? "—"}</div>
+          <div><span className="text-muted">{t("settings.version")}: </span>{__APP_VERSION__}</div>
           <div className="flex items-center gap-1.5">
             <ShieldCheck className={cn("h-4 w-4", health?.secrets_secure ? "text-ok" : "text-warn")} />
             <span className="text-muted">{t("settings.secrets")}: </span>
             {health ? t(health.secrets_secure ? "settings.keychain" : "settings.file") : "—"}
           </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-muted">{t("settings.developedBy")}</span>
+          <span className="font-medium">{AUTHOR}</span>
+          <Button size="sm" variant="ghost" icon={<Linkedin className="h-3.5 w-3.5" />} onClick={() => openUrl(AUTHOR_URL)}>LinkedIn</Button>
+          <Button size="sm" variant="ghost" icon={<Github className="h-3.5 w-3.5" />} onClick={() => openUrl(PROJECT_URL)}>GitHub</Button>
         </div>
         <p className="text-xs text-muted">{t("settings.dataFolder")}</p>
         {health?.paths && (

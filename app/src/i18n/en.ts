@@ -1,5 +1,5 @@
 const en = {
-  app: { tagline: "Collect • Combine • Send" },
+  app: { tagline: "Collect • Combine • Send", by: "by {{name}}" },
   common: {
     next: "Next", back: "Back", skip: "Skip this step", save: "Save", saved: "Saved", cancel: "Cancel",
     delete: "Delete", edit: "Edit", test: "Test", retry: "Try again", close: "Close", open: "Open",
@@ -265,7 +265,7 @@ const en = {
     title: "Settings", language: "Language", autostart: "Start RabShoot when I log in",
     notifications: "Show a notification when a report is sent or fails",
     catchUp: "Send missed reports when the computer starts (default for new reports)",
-    pauseAll: "Pause all reports", about: "About", version: "Version", secrets: "Secrets storage",
+    pauseAll: "Pause all reports", about: "About", version: "Version", developedBy: "Developed by", secrets: "Secrets storage",
     keychain: "System keychain", file: "Private file", rerunWizard: "Run the setup wizard again",
     dataFolder: "Your data is stored on this computer only.",
     configPath: "Settings", dataPath: "History & reports", logsPath: "Logs",
