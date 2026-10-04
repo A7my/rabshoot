@@ -101,7 +101,7 @@ Good to know:
 - **History** keeps every run with the exact email that was sent; failed runs can be re-sent.
 - **English and Arabic** interface (right-to-left supported).
 
-Full guide: [English](docs/user-guide.md) · [العربية](docs/user-guide.ar.md)
+Full guide: [English](docs/user-guide.md) · [Arabic](docs/user-guide.ar.md)
 
 ## How it works
 
@@ -211,14 +211,3 @@ git tag v0.1.0 && git push origin v0.1.0
 The workflow creates the GitHub release and attaches the installers under fixed names
 (`RabShoot-windows-x64-setup.exe`, `RabShoot-linux-amd64.deb`), so the download links at the top of
 this page always point to the newest version.
-
-## بالعربي
-
-**RabShoot** برنامج سطح مكتب لويندوز ولينكس يكتب تقرير شغلك اليومي بدالك: يجمع الـ commits والـ merge
-requests من GitLab وGitHub، والرسائل المهمة من Slack، ويلخصها بالذكاء الاصطناعي، ويبعتها إيميل من بريدك
-في الميعاد اللي تحدده، لناس تختارهم أو كرد على thread موجود.
-
-- **التحميل:** [ويندوز](https://github.com/A7my/rabshoot/releases/latest/download/RabShoot-windows-x64-setup.exe) ·
-  [لينكس](https://github.com/A7my/rabshoot/releases/latest/download/RabShoot-linux-amd64.deb)
-- **التثبيت على لينكس:** `sudo apt install ./RabShoot-linux-amd64.deb`
-- **دليل الاستخدام:** [docs/user-guide.ar.md](docs/user-guide.ar.md)
