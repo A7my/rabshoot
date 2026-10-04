@@ -271,6 +271,12 @@ const ar: Dict = {
     keychain: "خزنة النظام", file: "ملف خاص", rerunWizard: "تشغيل معالج الإعداد مرة أخرى",
     dataFolder: "بياناتك محفوظة على هذا الجهاز فقط.",
     configPath: "الإعدادات", dataPath: "السجل والتقارير", logsPath: "السجلات التقنية",
+    appearance: "المظهر", theme: "الألوان",
+    themes: { system: "مثل النظام", light: "فاتح", dark: "داكن" },
+    zoom: "التكبير", zoomIn: "تكبير", zoomOut: "تصغير", reset: "إعادة الضبط",
+    zoomHint: "يكبّر أو يصغّر النافذة كلها. الاختصارات: Ctrl + للتكبير، Ctrl − للتصغير، Ctrl 0 لإعادة الضبط.",
+    textSize: "حجم الخط",
+    textSizes: { small: "صغير", normal: "عادي", large: "كبير", xlarge: "كبير جدًا" },
   },
   errors: {
     generic: "حدث خطأ ما", invalidEmail: "أدخل بريدًا صحيحًا",

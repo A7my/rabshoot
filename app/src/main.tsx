@@ -8,6 +8,7 @@ import "@fontsource/ibm-plex-sans-arabic/500.css";
 import "@fontsource/ibm-plex-sans-arabic/600.css";
 import "@fontsource/ibm-plex-sans-arabic/700.css";
 import "./styles.css";
+import "./lib/appearance";
 import "./i18n";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";

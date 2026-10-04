@@ -10,6 +10,7 @@ import { useConnections } from "../components/connect";
 import { Alert, Button } from "../components/ui";
 import { applyLanguage } from "../i18n";
 import { api } from "../lib/api";
+import { useAppearance } from "../lib/appearance";
 import type { Profile } from "../lib/types";
 import { cn, localTimezone, newProfile, toProfile } from "../lib/utils";
 
@@ -157,7 +158,7 @@ export function Wizard({ mode }: { mode: "onboarding" | "new" }) {
                     {done ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : i + 1}
                   </span>
                   {t(`wizard.steps.${s}`)}
-                  {s === "slack" && <span className="ms-auto text-[10px] text-muted">{t("common.optional")}</span>}
+                  {s === "slack" && <span className="ms-auto text-3xs text-muted">{t("common.optional")}</span>}
                 </button>
               </li>
             );
@@ -205,10 +206,11 @@ export function Wizard({ mode }: { mode: "onboarding" | "new" }) {
 function Welcome() {
   const { t, i18n } = useTranslation();
   const bullets = t("wizard.welcomeBullets", { returnObjects: true }) as string[];
+  const { dark } = useAppearance();
   return (
     <div className="space-y-8">
       <div className="flex items-center gap-6 rounded-2xl border border-line bg-brand-soft p-6">
-        <img src="/logo.png" alt="RabShoot" className="h-36 w-36 shrink-0" />
+        <img src={dark ? "/logo.png" : "/logo-light.png"} alt="RabShoot" className="h-36 w-36 shrink-0" />
         <ul className="space-y-3">
           {bullets.map((b) => (
             <li key={b} className="flex gap-3 text-sm">

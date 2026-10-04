@@ -2,8 +2,40 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Colors are "R G B" channels so Tailwind opacity modifiers (bg-primary/15) keep working. */
 :root {
+  color-scheme: light;
+  --text-scale: 1;
+  --c-bg: 246 247 251;
+  --c-surface: 255 255 255;
+  --c-surface2: 240 242 247;
+  --c-line: 220 224 234;
+  --c-ink: 20 24 36;
+  --c-muted: 94 103 120;
+  --c-primary: 47 123 255;
+  --c-primary-hover: 31 106 238;
+  --c-violet: 124 58 237;
+  --c-violet-deep: 109 40 217;
+  --c-ok: 5 150 105;
+  --c-warn: 217 119 6;
+  --c-danger: 220 38 38;
+}
+
+:root.dark {
   color-scheme: dark;
+  --c-bg: 10 11 16;
+  --c-surface: 18 20 28;
+  --c-surface2: 24 27 38;
+  --c-line: 35 38 58;
+  --c-ink: 230 232 240;
+  --c-muted: 154 163 178;
+  --c-primary: 47 123 255;
+  --c-primary-hover: 74 140 255;
+  --c-violet: 139 92 246;
+  --c-violet-deep: 124 58 237;
+  --c-ok: 16 185 129;
+  --c-warn: 245 158 11;
+  --c-danger: 239 68 68;
 }
 
 html,
@@ -26,10 +58,10 @@ html[dir="rtl"] body {
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: #23263a transparent;
+  scrollbar-color: rgb(var(--c-line)) transparent;
 }
 
-input[type="time"]::-webkit-calendar-picker-indicator {
+.dark input[type="time"]::-webkit-calendar-picker-indicator {
   filter: invert(0.8);
 }
 

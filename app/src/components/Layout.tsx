@@ -16,9 +16,9 @@ export function Brand({ size = "md" }: { size?: "md" | "lg" }) {
       <img src="/mark.png" alt="" className={size === "lg" ? "h-14 w-14" : "h-9 w-9"} />
       <div>
         <div className={cn("ltr font-extrabold leading-none tracking-tight", size === "lg" ? "text-3xl" : "text-lg")}>
-          <span className="text-white">Rab</span><span className="text-gradient">Shoot</span>
+          <span className="text-ink">Rab</span><span className="text-gradient">Shoot</span>
         </div>
-        <div className={cn("mt-1 text-muted", size === "lg" ? "text-sm" : "text-[10px] tracking-wide")}>{t("app.tagline")}</div>
+        <div className={cn("mt-1 text-muted", size === "lg" ? "text-sm" : "text-3xs tracking-wide")}>{t("app.tagline")}</div>
       </div>
     </div>
   );
@@ -51,7 +51,7 @@ export function Layout({ children }: { children: ReactNode }) {
             </NavLink>
           ))}
         </nav>
-        <div className="mt-auto space-y-0.5 px-1 text-[11px] text-muted/70">
+        <div className="mt-auto space-y-0.5 px-1 text-2xs text-muted/70">
           <div>v{__APP_VERSION__}</div>
           <button type="button" onClick={() => openUrl(AUTHOR_URL)} className="hover:text-primary hover:underline">
             {t("app.by", { name: AUTHOR })}

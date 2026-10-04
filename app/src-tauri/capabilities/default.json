@@ -5,6 +5,9 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
+    "core:window:allow-theme",
+    "core:window:allow-set-theme",
+    "core:webview:allow-set-webview-zoom",
     "opener:default",
     "notification:default",
     "autostart:allow-enable",

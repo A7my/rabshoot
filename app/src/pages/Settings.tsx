@@ -1,14 +1,75 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, FolderOpen, Github, Languages, Linkedin, ShieldCheck, Wand2 } from "lucide-react";
+import {
+  Copy, FolderOpen, Github, Languages, Linkedin, Minus, Monitor, Moon, Palette, Plus, ShieldCheck, Sun, Wand2,
+} from "lucide-react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { AUTHOR, AUTHOR_URL, Brand, PROJECT_URL } from "../components/Layout";
 import { Button, Card, PageHeader, Spinner, Switch } from "../components/ui";
 import { applyLanguage } from "../i18n";
 import { api } from "../lib/api";
+import { setAppearance, stepZoom, TEXT_SIZES, useAppearance, ZOOM_STEPS, type ThemeMode } from "../lib/appearance";
 import { copyText, openUrl, setAutostart } from "../lib/platform";
 import type { Settings as SettingsT } from "../lib/types";
 import { cn } from "../lib/utils";
+
+function Choice({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button type="button" onClick={onClick}
+      className={cn("flex h-10 min-w-28 items-center justify-center gap-2 rounded-lg border px-4 text-sm",
+        active ? "border-primary bg-primary/15" : "border-line bg-surface2 text-muted hover:text-ink")}>
+      {children}
+    </button>
+  );
+}
+
+function AppearanceCard() {
+  const { t } = useTranslation();
+  const look = useAppearance();
+  const themes: [ThemeMode, ReactNode][] = [
+    ["system", <Monitor key="s" className="h-4 w-4" />],
+    ["light", <Sun key="l" className="h-4 w-4" />],
+    ["dark", <Moon key="d" className="h-4 w-4" />],
+  ];
+  return (
+    <Card className="space-y-5">
+      <div className="flex items-center gap-2 text-sm font-medium"><Palette className="h-4 w-4 text-primary" />{t("settings.appearance")}</div>
+      <div>
+        <div className="mb-2 text-sm text-muted">{t("settings.theme")}</div>
+        <div className="flex flex-wrap gap-2">
+          {themes.map(([mode, icon]) => (
+            <Choice key={mode} active={look.theme === mode} onClick={() => setAppearance({ theme: mode })}>
+              {icon}{t(`settings.themes.${mode}`)}
+            </Choice>
+          ))}
+        </div>
+      </div>
+      <div>
+        <div className="mb-2 text-sm text-muted">{t("settings.zoom")}</div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button aria-label={t("settings.zoomOut")} icon={<Minus className="h-4 w-4" />}
+            disabled={look.zoom === ZOOM_STEPS[0]} onClick={() => stepZoom(-1)} />
+          <div className="ltr w-16 text-center text-sm font-semibold">{Math.round(look.zoom * 100)}%</div>
+          <Button aria-label={t("settings.zoomIn")} icon={<Plus className="h-4 w-4" />}
+            disabled={look.zoom === ZOOM_STEPS[ZOOM_STEPS.length - 1]} onClick={() => stepZoom(1)} />
+          <Button variant="ghost" disabled={look.zoom === 1} onClick={() => setAppearance({ zoom: 1 })}>{t("settings.reset")}</Button>
+        </div>
+        <p className="mt-2 text-xs text-muted">{t("settings.zoomHint")}</p>
+      </div>
+      <div>
+        <div className="mb-2 text-sm text-muted">{t("settings.textSize")}</div>
+        <div className="flex flex-wrap gap-2">
+          {TEXT_SIZES.map((s) => (
+            <Choice key={s.key} active={look.textScale === s.scale} onClick={() => setAppearance({ textScale: s.scale })}>
+              <span style={{ fontSize: `${s.scale}em` }}>{t(`settings.textSizes.${s.key}`)}</span>
+            </Choice>
+          ))}
+        </div>
+      </div>
+    </Card>
+  );
+}
 
 export function Settings() {
   const { t, i18n } = useTranslation();
@@ -41,6 +102,7 @@ export function Settings() {
           ))}
         </div>
       </Card>
+      <AppearanceCard />
       <Card className="space-y-4">
         <Switch checked={settings.autostart} onChange={(autostart) => save({ autostart })} label={t("settings.autostart")} />
         <Switch checked={settings.notifications} onChange={(notifications) => save({ notifications })} label={t("settings.notifications")} />

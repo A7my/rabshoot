@@ -94,8 +94,9 @@ opens the right page for you. You can change everything later.
   be deleted until you remove it from that report.
 - **History:** every run, with its steps, recipients, the email as sent, and error details.
   **Send this day again** re-sends a past day.
-- **Settings:** app language, start with the computer, notifications, pause all reports, and where
-  your data is stored.
+- **Settings:** app language, appearance (light, dark or same as the system; zoom; text size), start
+  with the computer, notifications, pause all reports, and where your data is stored. Zoom also works
+  from the keyboard: **Ctrl +**, **Ctrl −**, and **Ctrl 0** to reset.
 
 ## Troubleshooting
 

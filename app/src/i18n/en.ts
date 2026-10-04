@@ -269,6 +269,12 @@ const en = {
     keychain: "System keychain", file: "Private file", rerunWizard: "Run the setup wizard again",
     dataFolder: "Your data is stored on this computer only.",
     configPath: "Settings", dataPath: "History & reports", logsPath: "Logs",
+    appearance: "Appearance", theme: "Theme",
+    themes: { system: "Same as system", light: "Light", dark: "Dark" },
+    zoom: "Zoom", zoomIn: "Zoom in", zoomOut: "Zoom out", reset: "Reset",
+    zoomHint: "Makes the whole window bigger or smaller. Shortcuts: Ctrl + to zoom in, Ctrl − to zoom out, Ctrl 0 to reset.",
+    textSize: "Text size",
+    textSizes: { small: "Small", normal: "Default", large: "Large", xlarge: "Extra large" },
   },
   errors: {
     generic: "Something went wrong", invalidEmail: "Enter a valid email address",
