@@ -26,6 +26,20 @@ _SPECIAL = re.compile(r"<!(here|channel|everyone)[^>]*>")
 
 
 SLACK_REDIRECT_URL = "http://127.0.0.1:47114/slack/callback"
+PROJECT_URL = "https://github.com/A7my/rabshoot"
+
+# Slack requires 175-4000 characters and shows it as plain text.
+LONG_DESCRIPTION = (
+    "RabShoot is a free desktop app for Windows and Linux that writes your daily work report. "
+    "It collects the day's commits, merge requests and issues from GitLab and GitHub and the "
+    "Slack conversations you choose, summarizes them with AI, and emails the report from your "
+    "own mailbox on your schedule.\n\n"
+    "This Slack app is read-only: it lets each teammate sign in with their own account so "
+    "RabShoot can read the channels and chats they pick. It never posts messages, and "
+    "everything runs on the member's own computer. One app per workspace is enough; share its "
+    "Client ID as the team code.\n\n"
+    f"Download, source code and documentation: {PROJECT_URL}"
+)
 
 
 def manifest(app_name: str = "RabShoot") -> dict:
@@ -34,6 +48,7 @@ def manifest(app_name: str = "RabShoot") -> dict:
         "display_information": {
             "name": app_name,
             "description": "Collects your work updates for the RabShoot daily report.",
+            "long_description": LONG_DESCRIPTION,
             "background_color": "#0a0b10",
         },
         "oauth_config": {"redirect_urls": [SLACK_REDIRECT_URL], "pkce_enabled": True,
