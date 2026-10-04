@@ -1,0 +1,75 @@
+{#
+  Text version (Slack message + saved .md file). Same variables as daily_report_email.html.j2.
+  Output is Slack mrkdwn: *bold*, _italic_, <url|label>.
+#}
+{% set active_convs = slack.active %}
+*{{ title }} — {{ date }}*
+{% if ai %}
+{{ stats.projects }} projects updated · {{ stats.changes }} code changes · {{ stats.merged }} MRs merged · {{ stats.highlights }} team highlights
+{% else %}
+{{ stats.commits }} commits · {{ stats.merged }} MRs merged · {{ stats.issues_closed }} issues closed · {{ stats.slack_messages }} Slack messages
+{% endif %}
+{% if gitlab.projects %}
+
+*Code changes*
+{% for p in gitlab.projects %}
+
+*<{{ p.url }}|{{ p.name }}>*{% if p.files %} _({{ p.files | length }} files, +{{ p.files | sum(attribute="added") }} −{{ p.files | sum(attribute="removed") }})_{% endif %}
+
+{% if p.error %}
+:warning: {{ p.error }}
+{% endif %}
+{% if sections.gitlab_changes and p.changes %}
+{% for c in p.changes %}
+• {{ c }}
+{% endfor %}
+{% endif %}
+{% if (sections.gitlab_commits or not p.changes) and p.commits %}
+_Commits ({{ p.commits | length }})_
+{% for c in p.commits[:max_items] %}
+• <{{ c.url }}|{{ c.short_id }}> {{ c.title }} — {{ c.author }}
+{% endfor %}
+{% endif %}
+{% if sections.gitlab_merge_requests and p.merge_requests %}
+_Merge requests ({{ p.merge_requests | length }})_
+{% for mr in p.merge_requests[:max_items] %}
+• [{{ mr.action }}] <{{ mr.url }}|!{{ mr.iid }}> {{ mr.title }} — {{ mr.author }}
+{% endfor %}
+{% endif %}
+{% if sections.gitlab_issues and p.issues %}
+_Issues ({{ p.issues | length }})_
+{% for i in p.issues[:max_items] %}
+• [{{ i.action }}] <{{ i.url }}|#{{ i.iid }}> {{ i.title }}{% if i.assignees %} — {{ i.assignees | join(", ") }}{% endif %}
+
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% endif %}
+{% if sections.slack_messages %}
+
+*{{ "Team updates" if ai else "Slack" }}*
+{% for conv in slack.conversations | selectattr("error") %}
+:warning: {{ conv.name }}: {{ conv.error }}
+{% endfor %}
+{% if not active_convs %}
+_No work-related updates today._
+{% endif %}
+{% for conv in active_convs %}
+
+*{{ conv.name }}*
+{% if "points" in conv %}
+{% for pt in conv.points %}
+• {{ pt }}
+{% endfor %}
+{% elif conv.ai_failed %}
+_{{ conv.message_count }} message{{ "" if conv.message_count == 1 else "s" }} — the AI summary was unavailable when this report was sent._
+{% else %}
+{% for t in conv.threads[:max_items] %}
+• {% if t.from_earlier %}_(thread from {{ t.date }})_ {% else %}`{{ t.time }}` {% endif %}*{{ t.user }}*: {{ t.text | oneline }}
+{% for r in t.replies %}
+      ↳ `{{ r.time }}` *{{ r.user }}*: {{ r.text | oneline }}
+{% endfor %}
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% endif %}

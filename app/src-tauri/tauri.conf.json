@@ -1,0 +1,58 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "RabShoot",
+  "version": "0.1.0",
+  "identifier": "com.rabshoot.app",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "RabShoot",
+        "width": 1200,
+        "height": 820,
+        "minWidth": 980,
+        "minHeight": 660,
+        "center": true,
+        "visible": false,
+        "backgroundColor": "#0A0B10"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost http://127.0.0.1:*; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-src 'self' about: data:"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "deb", "appimage"],
+    "category": "Productivity",
+    "shortDescription": "Daily work reports from GitLab, GitHub and Slack, written by AI and sent by email",
+    "longDescription": "RabShoot collects the day's real code changes and chat decisions, summarizes them with AI and emails the report on a schedule.",
+    "publisher": "RabShoot",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.png",
+      "icons/icon.ico"
+    ],
+    "externalBin": ["binaries/rabshoot-engine"],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "displayLanguageSelector": true,
+        "languages": ["English", "Arabic"]
+      }
+    },
+    "linux": {
+      "deb": {
+        "depends": []
+      }
+    }
+  }
+}

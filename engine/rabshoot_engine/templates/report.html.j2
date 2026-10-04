@@ -1,0 +1,154 @@
+{#
+  Email HTML. Inline styles and tables only: most email clients strip <style> and flexbox.
+  Variables: see render.build_context.
+#}
+{% macro bullet(text) %}
+{% if text.startswith("[Major]") %}
+<li style="margin:6px 0;line-height:1.5;"><span style="background:#FFF4E5;color:#B45309;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:700;letter-spacing:.3px;">MAJOR</span> {{ text[7:] | trim | codify }}</li>
+{% else %}
+<li style="margin:6px 0;line-height:1.5;">{{ text | codify }}</li>
+{% endif %}
+{% endmacro %}
+{% macro heading(label, color) %}
+<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:28px 0 8px;">
+  <tr>
+    <td style="width:4px;background:{{ color }};border-radius:2px;"></td>
+    <td style="padding-left:10px;font-size:17px;font-weight:700;color:#0A0B10;">{{ label }}</td>
+  </tr>
+</table>
+{% endmacro %}
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#EEF0F5;font-family:'Segoe UI',Inter,Tahoma,Arial,sans-serif;color:#1F2330;">
+<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;background:#EEF0F5;">
+<tr><td style="padding:24px 12px;">
+<table role="presentation" cellpadding="0" cellspacing="0" style="max-width:760px;width:100%;margin:0 auto;background:#FFFFFF;border-radius:12px;overflow:hidden;">
+
+  <tr>
+    <td bgcolor="#0A0B10" style="background:#0A0B10;padding:22px 28px;">
+      <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;">
+        <tr>
+          {% if logo_src %}
+          <td style="width:52px;vertical-align:middle;"><img src="{{ logo_src }}" width="44" height="44" alt="RabShoot" style="display:block;border:0;"></td>
+          {% endif %}
+          <td style="vertical-align:middle;">
+            <div style="font-size:21px;font-weight:700;color:#FFFFFF;">{{ title }}</div>
+            <div style="font-size:13px;color:#9AA3B2;margin-top:2px;">{{ date }}</div>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <tr><td style="height:4px;line-height:4px;font-size:0;background:#2F7BFF;background-image:linear-gradient(90deg,#2F7BFF,#8B5CF6);">&nbsp;</td></tr>
+
+  <tr><td style="padding:22px 28px 8px;">
+    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:separate;border-spacing:6px 0;">
+      <tr>
+        {% for label, value, color in [
+            ("Projects updated", stats.projects, "#2F7BFF"),
+            ("Code changes" if ai else "Commits", stats.changes if ai else stats.commits, "#10B981"),
+            ("Merged", stats.merged, "#7C3AED"),
+            ("Team highlights" if ai else "Messages", stats.highlights if ai else stats.slack_messages, "#F59E0B")] %}
+        <td width="25%" style="width:25%;background:#F5F7FB;border-radius:8px;padding:12px 6px;text-align:center;border-top:3px solid {{ color }};">
+          <div style="font-size:22px;font-weight:700;color:#0A0B10;">{{ value }}</div>
+          <div style="font-size:12px;color:#6B7385;">{{ label }}</div>
+        </td>
+        {% endfor %}
+      </tr>
+    </table>
+  </td></tr>
+
+  <tr><td style="padding:0 28px 24px;">
+
+  {% if projects %}
+  {{ heading("Code changes", "#2F7BFF") }}
+  {% for p in projects %}
+  <div style="margin:16px 0 6px;font-size:15px;font-weight:600;">
+    <span style="display:inline-block;background:{{ '#FCE9E1' if p.source == 'gitlab' else '#E8ECF3' }};color:{{ '#C2410C' if p.source == 'gitlab' else '#24292F' }};border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;vertical-align:middle;">{{ "GITLAB" if p.source == "gitlab" else "GITHUB" }}</span>
+    <a href="{{ p.url }}" style="color:#1F5FD6;text-decoration:none;">{{ p.name }}</a>
+    {% if p.files %}<span style="color:#6B7385;font-weight:normal;font-size:12px;">· {{ p.files | length }} files · <span style="color:#10B981;">+{{ p.files | sum(attribute="added") }}</span> <span style="color:#DC2626;">−{{ p.files | sum(attribute="removed") }}</span></span>{% endif %}
+  </div>
+  {% if p.error %}<div style="color:#DC2626;font-size:13px;">{{ p.error }}</div>{% endif %}
+
+  {% if sections.code_changes and p.changes %}
+  <ul style="margin:4px 0 10px;padding-left:20px;font-size:14px;">
+    {% for c in p.changes %}{{ bullet(c) }}{% endfor %}
+  </ul>
+  {% endif %}
+
+  {% if (sections.commits or not p.changes) and p.commits %}
+  <div style="font-weight:600;font-size:12px;color:#6B7385;text-transform:uppercase;letter-spacing:.4px;margin-top:8px;">Commits ({{ p.commits | length }})</div>
+  <ul style="margin:4px 0 10px;padding-left:20px;font-size:13px;">
+    {% for c in p.commits[:max_items] %}
+    <li style="margin:3px 0;"><a href="{{ c.url }}" style="color:#1F5FD6;font-family:Consolas,monospace;">{{ c.short_id }}</a> {{ c.title }} <span style="color:#6B7385;">— {{ c.author }}</span></li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  {% if sections.merge_requests and p.merge_requests %}
+  <div style="font-weight:600;font-size:12px;color:#6B7385;text-transform:uppercase;letter-spacing:.4px;margin-top:8px;">{{ "Merge requests" if p.source == "gitlab" else "Pull requests" }} ({{ p.merge_requests | length }})</div>
+  <ul style="margin:4px 0 10px;padding-left:20px;font-size:13px;">
+    {% for mr in p.merge_requests[:max_items] %}
+    <li style="margin:3px 0;"><b>[{{ mr.action }}]</b> <a href="{{ mr.url }}" style="color:#1F5FD6;">{{ mr.ref }}</a> {{ mr.title }} <span style="color:#6B7385;">— {{ mr.author }}</span></li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  {% if sections.issues and p.issues %}
+  <div style="font-weight:600;font-size:12px;color:#6B7385;text-transform:uppercase;letter-spacing:.4px;margin-top:8px;">Issues ({{ p.issues | length }})</div>
+  <ul style="margin:4px 0 10px;padding-left:20px;font-size:13px;">
+    {% for i in p.issues[:max_items] %}
+    <li style="margin:3px 0;"><b>[{{ i.action }}]</b> <a href="{{ i.url }}" style="color:#1F5FD6;">{{ i.ref }}</a> {{ i.title }}{% if i.assignees %} <span style="color:#6B7385;">— {{ i.assignees | join(", ") }}</span>{% endif %}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  {% endfor %}
+  {% endif %}
+
+  {% if sections.slack and slack_enabled %}
+  {{ heading("Team updates" if ai else "Slack", "#7C3AED") }}
+  {% for conv in failed_conversations %}
+  <div style="color:#DC2626;font-size:13px;">{{ conv.name }}: {{ conv.error }}</div>
+  {% endfor %}
+  {% for conv in active_conversations %}
+  <div style="margin:16px 0 6px;font-size:15px;font-weight:600;">{{ conv.name }}</div>
+  {% if "points" in conv %}
+  <ul style="margin:4px 0 10px;padding-left:20px;font-size:14px;">
+    {% for pt in conv.points %}{{ bullet(pt) }}{% endfor %}
+  </ul>
+  {% elif conv.ai_failed %}
+  <div style="color:#6B7385;font-style:italic;font-size:13px;">{{ conv.message_count }} message{{ "" if conv.message_count == 1 else "s" }} — the AI summary was unavailable when this report was sent.</div>
+  {% else %}
+  {% for t in conv.threads[:max_items] %}
+  <div style="margin:6px 0;font-size:13px;" dir="auto">
+    <span style="color:#6B7385;font-size:12px;">{% if t.from_earlier %}thread from {{ t.date }}{% else %}{{ t.time }}{% endif %}</span>
+    <b>{{ t.user }}</b>: {{ t.text | oneline(1000) }}
+    {% for r in t.replies %}
+    <div style="margin:4px 0 4px 22px;padding-left:10px;border-left:3px solid #D5D9E3;" dir="auto">
+      <span style="color:#6B7385;font-size:12px;">{{ r.time }}</span> <b>{{ r.user }}</b>: {{ r.text | oneline(1000) }}
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+  {% endif %}
+  {% endfor %}
+  {% if not active_conversations and not failed_conversations %}
+  <div style="color:#6B7385;font-style:italic;font-size:14px;">No work-related updates today.</div>
+  {% endif %}
+  {% endif %}
+
+  {% if not projects and not (sections.slack and slack_enabled) %}
+  <div style="color:#6B7385;font-style:italic;font-size:14px;margin-top:24px;">No activity found for this day.</div>
+  {% endif %}
+
+  </td></tr>
+
+  <tr><td style="padding:14px 28px;background:#F5F7FB;border-top:1px solid #E4E7EE;font-size:12px;color:#8A92A6;">
+    Generated {{ generated_at }}{% if branding %} · Sent with <b style="color:#2F7BFF;">RabShoot</b> — Collect • Combine • Send{% endif %}
+  </td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>

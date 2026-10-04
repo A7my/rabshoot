@@ -1,0 +1,21 @@
+# Install:
+#   sudo cp deploy/daily-report.service /etc/systemd/system/
+#   (edit User / WorkingDirectory below)
+#   sudo systemctl daemon-reload && sudo systemctl enable --now daily-report
+# Logs:
+#   journalctl -u daily-report -f
+
+[Unit]
+Description=Daily GitLab + Slack report
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=youruser
+WorkingDirectory=/opt/rabshoot
+ExecStart=/opt/rabshoot/.venv/bin/python -m daily_report serve
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

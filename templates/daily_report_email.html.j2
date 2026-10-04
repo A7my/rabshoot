@@ -1,0 +1,120 @@
+{#
+  HTML version used for email. Available variables:
+    title, date, generated_at, sections.<name> (bool), max_items, ai (bool)
+    gitlab.projects[]: name, url, error?, changes[]? (AI bullets), files[]?, commits[], merge_requests[], issues[]
+    slack.conversations[]: name, error?, points[]? (AI bullets), message_count, threads[]
+    slack.active[]: conversations worth showing (AI points, or raw threads if AI is off/failed)
+    stats: projects, changes, commits, merge_requests, merged, issues_closed, slack_messages, highlights
+  Keep styles inline: most email clients strip <style> blocks.
+#}
+{% macro bullet(text) %}
+{% if text.startswith("[Major]") %}
+<li style="margin:4px 0;"><span style="background:#fff1e5;color:#bc4c00;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:600;">MAJOR</span> {{ text[7:] | trim }}</li>
+{% else %}
+<li style="margin:4px 0;">{{ text }}</li>
+{% endif %}
+{% endmacro %}
+{% set active_convs = slack.active %}
+{% set failed_convs = slack.conversations | selectattr("error") | list %}
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:24px;background:#f5f6f8;font-family:Segoe UI,Tahoma,Arial,sans-serif;color:#1f2328;">
+<div style="max-width:760px;margin:0 auto;background:#ffffff;border-radius:8px;padding:24px;">
+
+  <h1 style="margin:0 0 4px;font-size:22px;">{{ title }}</h1>
+  <div style="color:#656d76;font-size:14px;margin-bottom:16px;">{{ date }}</div>
+
+  <table cellpadding="0" cellspacing="0" style="width:100%;margin-bottom:24px;border-collapse:separate;border-spacing:8px 0;">
+    <tr>
+      {% for label, value in [
+          ("Projects updated", stats.projects),
+          ("Code changes" if ai else "Commits", stats.changes if ai else stats.commits),
+          ("MRs merged", stats.merged),
+          ("Slack highlights" if ai else "Slack messages", stats.highlights if ai else stats.slack_messages)] %}
+      <td style="background:#f6f8fa;border-radius:6px;padding:12px;text-align:center;">
+        <div style="font-size:22px;font-weight:600;">{{ value }}</div>
+        <div style="font-size:12px;color:#656d76;">{{ label }}</div>
+      </td>
+      {% endfor %}
+    </tr>
+  </table>
+
+  {% if gitlab.projects %}
+  <h2 style="font-size:18px;border-bottom:1px solid #d0d7de;padding-bottom:6px;">Code changes</h2>
+  {% for p in gitlab.projects %}
+  <h3 style="font-size:15px;margin:18px 0 6px;"><a href="{{ p.url }}" style="color:#0969da;text-decoration:none;">{{ p.name }}</a>
+    {% if p.files %}<span style="color:#656d76;font-weight:normal;font-size:12px;">· {{ p.files | length }} files · +{{ p.files | sum(attribute="added") }} −{{ p.files | sum(attribute="removed") }}</span>{% endif %}
+  </h3>
+  {% if p.error %}<div style="color:#cf222e;">{{ p.error }}</div>{% endif %}
+
+  {% if sections.gitlab_changes and p.changes %}
+  <ul style="margin:4px 0 10px;padding-left:20px;">
+    {% for c in p.changes %}{{ bullet(c) }}{% endfor %}
+  </ul>
+  {% endif %}
+
+  {% if (sections.gitlab_commits or not p.changes) and p.commits %}
+  <div style="font-weight:600;font-size:13px;color:#656d76;">Commits ({{ p.commits | length }})</div>
+  <ul style="margin:4px 0 10px;padding-left:20px;">
+    {% for c in p.commits[:max_items] %}
+    <li><a href="{{ c.url }}" style="color:#0969da;font-family:monospace;">{{ c.short_id }}</a> {{ c.title }} <span style="color:#656d76;">— {{ c.author }}</span></li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  {% if sections.gitlab_merge_requests and p.merge_requests %}
+  <div style="font-weight:600;font-size:13px;color:#656d76;">Merge requests ({{ p.merge_requests | length }})</div>
+  <ul style="margin:4px 0 10px;padding-left:20px;">
+    {% for mr in p.merge_requests[:max_items] %}
+    <li><b>[{{ mr.action }}]</b> <a href="{{ mr.url }}" style="color:#0969da;">!{{ mr.iid }}</a> {{ mr.title }} <span style="color:#656d76;">— {{ mr.author }}</span></li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  {% if sections.gitlab_issues and p.issues %}
+  <div style="font-weight:600;font-size:13px;color:#656d76;">Issues ({{ p.issues | length }})</div>
+  <ul style="margin:4px 0 10px;padding-left:20px;">
+    {% for i in p.issues[:max_items] %}
+    <li><b>[{{ i.action }}]</b> <a href="{{ i.url }}" style="color:#0969da;">#{{ i.iid }}</a> {{ i.title }}{% if i.assignees %} <span style="color:#656d76;">— {{ i.assignees | join(", ") }}</span>{% endif %}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  {% endfor %}
+  {% endif %}
+
+  {% if sections.slack_messages and (active_convs or failed_convs) %}
+  <h2 style="font-size:18px;border-bottom:1px solid #d0d7de;padding-bottom:6px;margin-top:28px;">{{ "Team updates" if ai else "Slack" }}</h2>
+  {% for conv in failed_convs %}
+  <div style="color:#cf222e;">{{ conv.name }}: {{ conv.error }}</div>
+  {% endfor %}
+  {% for conv in active_convs %}
+  <h3 style="font-size:15px;margin:18px 0 6px;">{{ conv.name }}</h3>
+  {% if "points" in conv %}
+  <ul style="margin:4px 0 10px;padding-left:20px;">
+    {% for pt in conv.points %}{{ bullet(pt) }}{% endfor %}
+  </ul>
+  {% elif conv.ai_failed %}
+  <div style="color:#656d76;font-style:italic;">{{ conv.message_count }} message{{ "" if conv.message_count == 1 else "s" }} — the AI summary was unavailable when this report was sent.</div>
+  {% else %}
+  {% for t in conv.threads[:max_items] %}
+  <div style="margin:6px 0;" dir="auto">
+    <span style="color:#656d76;font-size:12px;">{% if t.from_earlier %}thread from {{ t.date }}{% else %}{{ t.time }}{% endif %}</span>
+    <b>{{ t.user }}</b>: {{ t.text | oneline(1000) }}
+    {% for r in t.replies %}
+    <div style="margin:4px 0 4px 22px;padding-left:10px;border-left:3px solid #d0d7de;" dir="auto">
+      <span style="color:#656d76;font-size:12px;">{{ r.time }}</span> <b>{{ r.user }}</b>: {{ r.text | oneline(1000) }}
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+  {% endif %}
+  {% endfor %}
+  {% elif sections.slack_messages %}
+  <h2 style="font-size:18px;border-bottom:1px solid #d0d7de;padding-bottom:6px;margin-top:28px;">Team updates</h2>
+  <div style="color:#656d76;font-style:italic;">No work-related updates today.</div>
+  {% endif %}
+
+  <div style="color:#8c959f;font-size:12px;margin-top:28px;">Generated {{ generated_at }}</div>
+</div>
+</body>
+</html>

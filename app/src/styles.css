@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-bg text-ink font-sans antialiased;
+}
+
+html[dir="rtl"] body {
+  @apply font-arabic;
+}
+
+::selection {
+  background: rgba(47, 123, 255, 0.35);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #23263a transparent;
+}
+
+input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.8);
+}
+
+.text-gradient {
+  background: linear-gradient(90deg, #2f7bff, #8b5cf6);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.ltr {
+  direction: ltr;
+  unicode-bidi: isolate;
+}

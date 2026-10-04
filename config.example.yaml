@@ -1,0 +1,159 @@
+# =====================================================================
+#  Daily Report settings
+#  Edit freely while the service is running: changes apply within
+#  `reload_interval_seconds`. Run `python -m daily_report check` after
+#  editing to validate everything without sending anything.
+# =====================================================================
+
+
+# ---------------------------------------------------------------------
+# 1) WHEN to send
+# ---------------------------------------------------------------------
+schedule:
+  time: "18:00"                 # HH:MM, 24h  (e.g. "17:30", "23:00")
+  days: "sun-thu"               # "sun-thu", "mon-fri", "*" (every day), "sun,tue,thu"
+  timezone: "Africa/Cairo"
+  reload_interval_seconds: 30
+
+
+# ---------------------------------------------------------------------
+# 2) WHICH Slack conversations to read
+#    Run `python -m daily_report list` to print all of yours, then copy
+#    the lines you want here. Threads are always included.
+# ---------------------------------------------------------------------
+slack:
+  enabled: true
+
+  channels:
+    # - "#genral"
+    - "#general"
+
+  direct_messages:
+    # - "@teammate"             # private chat with a person
+    # - "C0A8ZHQ6HL7"           # group chat (ID from `list`)
+
+  # Optional filters (leave empty to keep everything)
+  users: []                     # Slack user IDs; only messages from these people
+  keywords: []                  # only messages containing one of these words
+  include_bots: false
+  thread_lookback_days: 7       # replies today on threads started up to N days ago
+
+  # Messages made only of these phrases (plus up to `ignore_leftover_words` other words,
+  # e.g. "صباح الخير يا شباب") are dropped. "تمام هخلص الـ API النهارده" is kept.
+  # The AI also removes small talk; this list just filters the obvious ones early.
+  ignore_leftover_words: 2
+  ignore_messages:
+    - "صباح الخير"
+    - "صباح النور"
+    - "مساء الخير"
+    - "مساء النور"
+    - "السلام عليكم"
+    - "وعليكم السلام"
+    - "ورحمة الله وبركاته"
+    - "ازيك"
+    - "عامل ايه"
+    - "اخبارك"
+    - "الحمد لله"
+    - "تمام"
+    - "شكرا"
+    - "متشكر"
+    - "تسلم"
+    - "حاضر"
+    - "ماشي"
+    - "اوك"
+    - "ايوا"
+    - "good morning"
+    - "hello"
+    - "hi"
+    - "thanks"
+    - "thank you"
+    - "ok"
+    - "okay"
+
+
+# ---------------------------------------------------------------------
+# 3) WHO receives the email
+# ---------------------------------------------------------------------
+delivery:
+  email:
+    enabled: true
+    to:
+      - "teammate@example.com"
+    cc:
+      - "lead@example.com"
+    bcc: []
+    subject: "{title} — {date}"   # {title} and {date} are filled in automatically
+    sender_name: "Daily Report"
+    sender: ""                    # empty = use SMTP_USER from .env
+    smtp_host: "smtp.gmail.com"   # Gmail: smtp.gmail.com | Outlook/365: smtp.office365.com
+    smtp_port: 587                # 587 (STARTTLS) or 465 (SSL)
+
+    # Reply inside an existing email conversation instead of a new email.
+    # The email must be in the SENDER's mailbox (received or sent).
+    thread:
+      enabled: true
+      subject: "Team Daily Report"                 # subject of the existing email, e.g. "Daily updates - Team"
+      message_id: ""              # optional, more precise (Gmail: ⋮ > Show original > Message-ID)
+      reply_all: true             # send to everyone on the thread (+ to/cc above)
+
+  slack:
+    enabled: false                # also post the report in Slack
+    channel: "#daily-reports"     # "#channel" (invite the bot: /invite @Daily Report)
+
+  file:
+    enabled: true                 # keep a copy in reports/ (.md + .html)
+    directory: "reports"
+
+
+# ---------------------------------------------------------------------
+# 4) GitLab (all projects you are a member of, only those active that day)
+# ---------------------------------------------------------------------
+gitlab:
+  enabled: true
+  url: "https://gitlab.com"
+  projects: "all"               # or a list: ["my-group/my-project", ...]
+  exclude_projects: []          # e.g. ["someone/old-project"]
+  authors: []                   # only these GitLab usernames/emails; empty = everyone
+  include_merge_commits: false
+
+
+# ---------------------------------------------------------------------
+# 5) Report look
+#    Edit the templates to change layout/wording.
+# ---------------------------------------------------------------------
+report:
+  title: "Daily Report"
+  template: "templates/daily_report.md.j2"                 # Slack / text version
+  email_template: "templates/daily_report_email.html.j2"   # email version
+  sections:
+    gitlab_changes: true          # AI summary of the real code changes
+    gitlab_commits: false         # raw commit list (shown anyway if the AI is off/fails)
+    gitlab_merge_requests: true
+    gitlab_issues: true
+    slack_messages: true
+  max_items_per_section: 50
+
+
+# ---------------------------------------------------------------------
+# 6) AI summaries: English report, real code changes, no small talk
+#    Needs AI_API_KEY in .env. Any OpenAI-compatible provider works:
+#      Gemini (free tier): base_url https://generativelanguage.googleapis.com/v1beta/openai
+#                          model    gemini-3.5-flash     (key: aistudio.google.com/apikey)
+#      OpenAI:             base_url https://api.openai.com/v1         model gpt-4o-mini
+#      Local Ollama:       base_url http://localhost:11434/v1         model qwen2.5-coder (no key)
+#    Diffs of .env / keys / lockfiles are never sent; secret-looking values are masked.
+#    If the AI fails, the report is still sent in the old format.
+# ---------------------------------------------------------------------
+ai:
+  enabled: true
+  base_url: "https://generativelanguage.googleapis.com/v1beta/openai"
+  model: "gemini-3.5-flash"
+  fallback_models:                # tried in order when the main model is busy/unavailable
+    - "gemini-3.6-flash"
+    - "gemini-3.1-flash-lite"
+    - "gemini-flash-latest"
+    - "gemini-3-flash-preview"
+  language: "English"
+  max_points: 6                   # bullets per project / per conversation
+  max_diff_chars_per_project: 20000
+  extra_instructions: ""          # e.g. "Mention ticket numbers. Keep it very short."

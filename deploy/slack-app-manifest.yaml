@@ -1,0 +1,28 @@
+display_information:
+  name: Daily Report
+  description: Collects daily Slack messages and GitLab activity into a report
+features:
+  bot_user:
+    display_name: Daily Report
+    always_online: false
+oauth_config:
+  scopes:
+    user:
+      - channels:history
+      - groups:history
+      - im:history
+      - mpim:history
+      - channels:read
+      - groups:read
+      - im:read
+      - mpim:read
+      - users:read
+      - chat:write
+    bot:
+      - chat:write
+      - channels:read
+      - groups:read
+settings:
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false

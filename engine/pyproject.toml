@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rabshoot-engine"
+version = "0.1.0"
+description = "RabShoot engine: collects GitLab/GitHub/Slack activity, summarizes it with AI and emails it"
+requires-python = ">=3.11"
+dependencies = [
+    "apscheduler>=3.10,<4",
+    "fastapi>=0.110",
+    "uvicorn>=0.30",
+    "pydantic>=2.6",
+    "jinja2>=3.1",
+    "pyyaml>=6",
+    "requests>=2.31",
+    "keyring>=25",
+    "tzdata>=2024.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "httpx>=0.27", "pyinstaller>=6.6", "pillow>=10"]
+
+[project.scripts]
+rabshoot-engine = "rabshoot_engine.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["rabshoot_engine*"]
+
+[tool.setuptools.package-data]
+rabshoot_engine = ["templates/*.j2", "assets/*.png", "assets/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
