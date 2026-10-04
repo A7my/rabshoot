@@ -29,13 +29,29 @@ class LoopbackFlows:
     def __init__(self, service: str):
         self.service = service
         self._flows: dict[str, dict] = {}
+        self._lock = threading.Lock()
+
+    def _release(self, port: int) -> None:
+        """Only one browser sign-in can wait on a port, so a new attempt replaces older ones."""
+        for flow in list(self._flows.values()):
+            if flow.get("_port") == port and flow["status"] == "pending":
+                flow.update(status="cancelled", message="A newer sign-in replaced this one")
+                thread = flow.get("_thread")
+                if thread:
+                    thread.join(timeout=3)
 
     def start(self, port: int, path: str, exchange: Callable[[dict, str], dict],
               timeout: int = 600, **fields) -> tuple[str, dict]:
         """`exchange(flow, code)` turns the authorization code into the result dict."""
+        with self._lock:
+            self._release(port)
+            return self._start(port, path, exchange, timeout, **fields)
+
+    def _start(self, port: int, path: str, exchange: Callable[[dict, str], dict],
+               timeout: int, **fields) -> tuple[str, dict]:
         flow_id = uuid.uuid4().hex
         flow = {"status": "pending", "state": secrets.token_urlsafe(24), "started": time.time(),
-                **fields}
+                "_port": port, **fields}
         self._flows[flow_id] = flow
         service = self.service
 
@@ -75,12 +91,19 @@ class LoopbackFlows:
             def log_message(self, *args):
                 pass
 
-        try:
-            server = HTTPServer(("127.0.0.1", port), Handler)
-        except OSError as exc:
-            self._flows.pop(flow_id, None)
-            raise RuntimeError(f"Port {port} is busy; close the other app using it and try again "
-                               f"({exc})") from exc
+        server = None
+        for attempt in range(6):
+            try:
+                server = HTTPServer(("127.0.0.1", port), Handler)
+                break
+            except OSError as exc:
+                if attempt == 5:
+                    self._flows.pop(flow_id, None)
+                    raise RuntimeError(
+                        f"Another program is using port {port}, which {service} sign-in needs. "
+                        "If RabShoot is open twice or an old copy is still running, quit it from the "
+                        "tray icon (or restart the computer) and try again.") from exc
+                time.sleep(0.5)
         server.timeout = 1
 
         def serve():
@@ -91,7 +114,8 @@ class LoopbackFlows:
                 flow.update(status="expired", message="The sign-in took too long; try again")
             server.server_close()
 
-        threading.Thread(target=serve, daemon=True).start()
+        flow["_thread"] = threading.Thread(target=serve, daemon=True)
+        flow["_thread"].start()
         return flow_id, flow
 
     def status(self, flow_id: str) -> dict:
