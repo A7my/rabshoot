@@ -93,11 +93,25 @@ export function ConversationPicker({ connectionId, value, onChange }: {
   const toggle = (c: SlackConversation) => {
     onChange(selected.has(c.id) ? value.filter((v) => v.id !== c.id) : [...value, { id: c.id, name: c.name }]);
   };
+  const visible = Object.values(groups).flat();
+  const allSelected = (items: SlackConversation[]) => items.length > 0 && items.every((c) => selected.has(c.id));
+  const setMany = (items: SlackConversation[], on: boolean) => {
+    const ids = new Set(items.map((c) => c.id));
+    const rest = value.filter((v) => !ids.has(v.id));
+    onChange(on ? [...rest, ...items.map((c) => ({ id: c.id, name: c.name }))] : rest);
+  };
+  const selectAll = (items: SlackConversation[]) => (
+    <button type="button" className="text-xs font-medium text-primary hover:underline"
+      onClick={() => setMany(items, !allSelected(items))}>
+      {allSelected(items) ? t("slack.clearAll") : t("slack.selectAll")}
+    </button>
+  );
   return (
     <div className="rounded-lg border border-line bg-bg p-3">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div className="flex-1"><SearchInput value={filter} onChange={setFilter} /></div>
         <Badge tone="primary">{t("slack.selectedCount", { count: value.length })}</Badge>
+        {visible.length > 0 && selectAll(visible)}
       </div>
       {isLoading && <Spinner label={t("common.loading")} />}
       {error && <Alert kind="error">{(error as Error).message}</Alert>}
@@ -105,7 +119,12 @@ export function ConversationPicker({ connectionId, value, onChange }: {
       <div className="max-h-80 space-y-4 overflow-y-auto pe-1">
         {(Object.keys(groups) as SlackConversation["kind"][]).map((kind) => groups[kind].length > 0 && (
           <div key={kind}>
-            <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">{t(`slack.kinds.${kind}`)}</div>
+            <div className="mb-1 flex items-center justify-between gap-2 pe-2">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+                {t(`slack.kinds.${kind}`)} <span className="font-normal normal-case">({groups[kind].length})</span>
+              </span>
+              {selectAll(groups[kind])}
+            </div>
             {groups[kind].map((c) => {
               const Icon = KIND_ICON[c.kind];
               return (

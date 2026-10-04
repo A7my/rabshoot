@@ -1,8 +1,8 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { KeyRound, Plus, RefreshCw, Trash2, X } from "lucide-react";
+import { KeyRound, Plus, RefreshCw, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ConnectForm, ConnectionRow, useConnections } from "../components/connect";
+import { ConnectForm, ConnectionRow, DeleteConnectionButton, useConnections } from "../components/connect";
 import { Alert, Button, Card, EmptyState, Label, PageHeader, SecretInput, Spinner } from "../components/ui";
 import { api } from "../lib/api";
 import type { Connection, ConnectionType } from "../lib/types";
@@ -63,7 +63,7 @@ export function Connections() {
 function ConnectionItem({ conn }: { conn: Connection }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
-  const [busy, setBusy] = useState<"test" | "delete" | "save" | null>(null);
+  const [busy, setBusy] = useState<"test" | "save" | null>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [editing, setEditing] = useState(false);
   const [secret, setSecret] = useState("");
@@ -76,13 +76,6 @@ function ConnectionItem({ conn }: { conn: Connection }) {
       setMessage({ kind: r.ok ? "ok" : "error", text: r.message });
       refresh();
     } catch (e: any) { setMessage({ kind: "error", text: e.message }); } finally { setBusy(null); }
-  };
-  const remove = async () => {
-    if (!window.confirm(t("common.confirmDelete"))) return;
-    setBusy("delete"); setMessage(null);
-    try { await api.deleteConnection(conn.id); refresh(); }
-    catch (e: any) { setMessage({ kind: "error", text: e.status === 409 ? `${t("connections.inUse")} (${e.message})` : e.message }); }
-    finally { setBusy(null); }
   };
   const saveSecret = async () => {
     setBusy("save"); setMessage(null);
@@ -102,7 +95,7 @@ function ConnectionItem({ conn }: { conn: Connection }) {
         <div className="flex shrink-0 gap-1">
           <Button variant="ghost" size="sm" loading={busy === "test"} icon={<RefreshCw className="h-4 w-4" />} onClick={test}>{t("common.test")}</Button>
           {!oauth && <Button variant="ghost" size="sm" onClick={() => setEditing(!editing)}>{editing ? <X className="h-4 w-4" /> : t("common.edit")}</Button>}
-          <Button variant="ghost" size="sm" loading={busy === "delete"} onClick={remove}><Trash2 className="h-4 w-4 text-danger" /></Button>
+          <DeleteConnectionButton conn={conn} />
         </div>} />
       {editing && (
         <div className="flex items-end gap-2 ps-8">

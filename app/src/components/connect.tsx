@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bot, CheckCircle2, Copy, Github, Gitlab, Mail, MessageSquare, Plus, Server } from "lucide-react";
+import { Bot, CheckCircle2, Copy, Github, Gitlab, Mail, MessageSquare, Plus, Server, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { api } from "../lib/api";
@@ -30,6 +30,39 @@ function useConnectedCallback(onConnected: (c: Connection) => void) {
 
 function ErrorLine({ error }: { error: string }) {
   return error ? <Alert kind="error">{error}</Alert> : null;
+}
+
+/** Delete a saved account; if reports use it, ask again and take it out of them. */
+export function DeleteConnectionButton({ conn, onDeleted }: { conn: Connection; onDeleted?: (id: string) => void }) {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  const remove = async () => {
+    if (!window.confirm(t("connections.confirmDelete", { name: conn.label || conn.type }))) return;
+    setBusy(true);
+    try {
+      try {
+        await api.deleteConnection(conn.id);
+      } catch (e: any) {
+        if (e.status !== 409 || !window.confirm(t("connections.inUseConfirm", { reports: e.message }))) throw e;
+        await api.deleteConnection(conn.id, true);
+      }
+      onDeleted?.(conn.id);
+      qc.invalidateQueries({ queryKey: ["connections"] });
+      qc.invalidateQueries({ queryKey: ["profiles"] });
+      qc.invalidateQueries({ queryKey: ["profile"] });
+    } catch (e: any) {
+      if (e.status !== 409) window.alert(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Button variant="ghost" size="sm" loading={busy} title={t("connections.delete")} aria-label={t("connections.delete")}
+      onClick={(e) => { e.stopPropagation(); remove(); }}>
+      <Trash2 className="h-4 w-4 text-danger" />
+    </Button>
+  );
 }
 
 /* ------------------------------------------------------------------ email */
@@ -537,7 +570,7 @@ export function ConnectionRow({ conn, selected, onClick, right }: { conn: Connec
 }
 
 /** Pick one saved connection of a type, or connect a new one inline. */
-export function ConnectionPicker({ type, value, onChange }: { type: "email" | "slack" | "ai"; value: string | null; onChange: (id: string) => void }) {
+export function ConnectionPicker({ type, value, onChange }: { type: "email" | "slack" | "ai"; value: string | null; onChange: (id: string | null) => void }) {
   const { t } = useTranslation();
   const { data: connections, isLoading } = useConnections();
   const items = (connections ?? []).filter((c) => c.type === type);
@@ -552,7 +585,10 @@ export function ConnectionPicker({ type, value, onChange }: { type: "email" | "s
     <div className="space-y-3">
       {items.length > 0 && (
         <div className="space-y-2">
-          {items.map((c) => <ConnectionRow key={c.id} conn={c} selected={c.id === value} onClick={() => { onChange(c.id); setAdding(false); }} />)}
+          {items.map((c) => (
+            <ConnectionRow key={c.id} conn={c} selected={c.id === value} onClick={() => { onChange(c.id); setAdding(false); }}
+              right={<DeleteConnectionButton conn={c} onDeleted={(id) => { if (id === value) onChange(null); }} />} />
+          ))}
         </div>
       )}
       {items.length > 0 && !adding && (

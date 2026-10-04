@@ -131,6 +131,29 @@ def _repoint(profile: Profile, gone: set[str], keep: str) -> bool:
     return profile.model_dump() != before
 
 
+def uses(profile: Profile, conn_id: str) -> bool:
+    return conn_id in {profile.sender_connection_id, profile.ai_connection_id,
+                       profile.slack.connection_id, *(s.connection_id for s in profile.code_sources)}
+
+
+def detach_connection(conn_id: str) -> list[str]:
+    """Take an account out of every report that uses it; returns those reports' names."""
+    names = []
+    for profile in list_profiles():
+        if not uses(profile, conn_id):
+            continue
+        if profile.sender_connection_id == conn_id:
+            profile.sender_connection_id = None
+        if profile.ai_connection_id == conn_id:
+            profile.ai_connection_id = None
+        if profile.slack.connection_id == conn_id:
+            profile.slack.connection_id, profile.slack.conversations = None, []
+        profile.code_sources = [s for s in profile.code_sources if s.connection_id != conn_id]
+        save_profile(profile)
+        names.append(profile.name)
+    return names
+
+
 def merge_saved_duplicates() -> int:
     """Fold copies of one account into the oldest copy, keeping the newest sign-in.
 

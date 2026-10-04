@@ -58,6 +58,20 @@ def test_profile_crud_and_problems(monkeypatch):
     assert c.delete(f"/profiles/{pid}").json() == {"ok": True}
 
 
+def test_deleting_a_used_account_takes_it_out_of_reports(monkeypatch):
+    c = client()
+    monkeypatch.setattr(connectors, "test", lambda conn: {"ok": True, "message": "ok",
+                                                          "meta": {}})
+    ai = c.post("/connections", json={"type": "ai", "secret": {"key": "x"}}).json()
+    pid = c.post("/profiles", json={"name": "Team", "ai_connection_id": ai["id"]}).json()["id"]
+
+    refused = c.delete(f"/connections/{ai['id']}")
+    assert refused.status_code == 409 and refused.json()["detail"] == "Team"
+    assert c.delete(f"/connections/{ai['id']}?detach=true").json() == {"ok": True}
+    assert c.get("/connections").json() == []
+    assert c.get(f"/profiles/{pid}").json()["ai_connection_id"] is None
+
+
 def test_manifest_and_links():
     links = client().get("/auth/links").json()
     assert links["slack_manifest_url"].startswith("https://api.slack.com/apps?new_app=1")

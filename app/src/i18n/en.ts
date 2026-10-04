@@ -115,6 +115,7 @@ const en = {
     chooseHint: "Only these projects will be included.",
     selectedCount: "{{count}} selected", noProjects: "No projects found for this account.",
     sources: "Connected sources", noSources: "No code source yet. Connect one above.",
+    removeFromReport: "Remove from this report (the account stays saved)",
     oauthUnavailable: "Browser sign-in isn't available in this build — use an access token.",
   },
   slack: {
@@ -154,6 +155,7 @@ const en = {
     pick: "Which conversations should be included?", pickHint: "Threads inside them are always included.",
     kinds: { channel: "Channels", private: "Private channels", group: "Group chats", dm: "Direct messages" },
     selectedCount: "{{count}} selected", noConversations: "No conversations found.",
+    selectAll: "Select all", clearAll: "Clear",
     ignore: "Ignore messages that are only…", ignoreHint: "One phrase per line. Messages with real content are kept.",
   },
   ai: {
@@ -248,7 +250,9 @@ const en = {
   connections: {
     title: "Accounts", intro: "Accounts are shared by all your reports. Secrets are kept in your system's secure keychain.",
     types: { email: "Email", gitlab: "GitLab", github: "GitHub", slack: "Slack", ai: "AI" },
-    inUse: "This account is used by a report and can't be deleted.",
+    delete: "Delete account",
+    confirmDelete: "Delete the account \"{{name}}\"? Its saved password or token is removed from this computer.",
+    inUseConfirm: "These reports use this account: {{reports}}.\n\nRemove it from them and delete it? They will need another account before they can send.",
     updateSecret: "Update password / token", tested: "Test passed", add: "Add account",
     fileWarning: "No system keychain was found, so secrets are stored in a private file readable only by your user.",
   },

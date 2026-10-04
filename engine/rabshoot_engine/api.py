@@ -156,13 +156,13 @@ def create_app(token: str, scheduler: Scheduler | None = None) -> FastAPI:
         return _public(storage.get_connection(conn_id))
 
     @app.delete("/connections/{conn_id}", dependencies=guarded)
-    def delete_connection(conn_id: str):
+    def delete_connection(conn_id: str, detach: bool = False):
+        """`detach` also removes the account from the reports that use it."""
         get_conn(conn_id)
-        used = [p.name for p in storage.list_profiles()
-                if conn_id in {p.sender_connection_id, p.ai_connection_id, p.slack.connection_id,
-                               *(s.connection_id for s in p.code_sources)}]
-        if used:
-            raise HTTPException(409, "Used by: " + ", ".join(used))
+        used = [p.name for p in storage.list_profiles() if storage.uses(p, conn_id)]
+        if used and not detach:
+            raise HTTPException(409, ", ".join(used))
+        storage.detach_connection(conn_id)
         storage.delete_connection(conn_id)
         return {"ok": True}
 

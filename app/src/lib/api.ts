@@ -73,7 +73,8 @@ export const api = {
     request<Connection & { test: { ok: boolean; message: string } }>("POST", "/connections", body),
   updateConnection: (id: string, body: { label?: string; meta?: object; secret?: object }) =>
     request<Connection>("PUT", `/connections/${id}`, body),
-  deleteConnection: (id: string) => request<{ ok: true }>("DELETE", `/connections/${id}`),
+  deleteConnection: (id: string, detach = false) =>
+    request<{ ok: true }>("DELETE", `/connections/${id}${detach ? "?detach=true" : ""}`),
   testConnection: (id: string) =>
     request<{ ok: boolean; message: string }>("POST", `/connections/${id}/test`),
 

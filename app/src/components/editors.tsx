@@ -1,11 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { CalendarClock, MessagesSquare, Plus, Repeat, Send, Trash2, Users } from "lucide-react";
+import { CalendarClock, MessagesSquare, Plus, Repeat, Send, Users, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { api } from "../lib/api";
 import type { CodeSource, Profile, ScheduleMode } from "../lib/types";
 import { cn, compactDays, DAY_PRESETS, DAYS, dayIn, expandDays, msUntil, timezones } from "../lib/utils";
-import { CodeConnect, ConnectionPicker, ConnectionRow, SlackConnect, useConnections } from "./connect";
+import { CodeConnect, ConnectionPicker, ConnectionRow, DeleteConnectionButton, SlackConnect, useConnections } from "./connect";
 import { ConversationPicker, ProjectPicker, ThreadPicker } from "./pickers";
 import { Alert, Button, Checkbox, EmailChips, Input, Label, Select, Switch, Textarea } from "./ui";
 
@@ -126,8 +126,9 @@ export function CodeSourcesEditor({ profile, update }: { profile: Profile; updat
             return (
               <div key={s.connection_id} className="rounded-xl border border-line bg-surface2 p-4">
                 <ConnectionRow conn={conn} right={
-                  <Button variant="ghost" size="sm" onClick={() => update({ code_sources: sources.filter((_, i) => i !== idx) })}>
-                    <Trash2 className="h-4 w-4" />
+                  <Button variant="ghost" size="sm" title={t("code.removeFromReport")} aria-label={t("code.removeFromReport")}
+                    onClick={() => update({ code_sources: sources.filter((_, i) => i !== idx) })}>
+                    <X className="h-4 w-4" />
                   </Button>} />
                 <div className="mt-4 grid gap-4 lg:grid-cols-2">
                   <div>
@@ -149,7 +150,13 @@ export function CodeSourcesEditor({ profile, update }: { profile: Profile; updat
       {unused.length > 0 && (
         <div className="space-y-2">
           <div className="text-xs text-muted">{t("common.useExisting")}</div>
-          {unused.map((c) => <ConnectionRow key={c.id} conn={c} onClick={() => addSource(c.id)} right={<Plus className="h-4 w-4 text-primary" />} />)}
+          {unused.map((c) => (
+            <ConnectionRow key={c.id} conn={c} onClick={() => addSource(c.id)} right={
+              <div className="flex shrink-0 items-center gap-1">
+                <Plus className="h-4 w-4 text-primary" />
+                <DeleteConnectionButton conn={c} />
+              </div>} />
+          ))}
         </div>
       )}
       {adding ? <CodeConnect onConnected={(c) => addSource(c.id)} />
@@ -179,7 +186,8 @@ export function SlackEditor({ profile, update, showConnect = true }: { profile: 
           </label>
           {slackConns.map((c) => (
             <ConnectionRow key={c.id} conn={c} selected={s.connection_id === c.id}
-              onClick={() => set({ connection_id: c.id, conversations: s.connection_id === c.id ? s.conversations : [] })} />
+              onClick={() => set({ connection_id: c.id, conversations: s.connection_id === c.id ? s.conversations : [] })}
+              right={<DeleteConnectionButton conn={c} onDeleted={(id) => { if (id === s.connection_id) set({ connection_id: null, conversations: [] }); }} />} />
           ))}
           {!adding && showConnect && <Button variant="ghost" size="sm" icon={<Plus className="h-4 w-4" />} onClick={() => setAdding(true)}>{t("common.addNew")}</Button>}
         </div>
