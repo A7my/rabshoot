@@ -44,6 +44,19 @@ def app_icon(mark: Image.Image, size: int) -> Image.Image:
     return canvas.resize((size, size), Image.LANCZOS)
 
 
+def installer_images(logo: Image.Image, mark: Image.Image) -> None:
+    """NSIS needs 24-bit BMPs: a 164x314 welcome sidebar and a 150x57 page header."""
+    sidebar = Image.new("RGBA", (164, 314), BG)
+    full = logo.resize((156, 156), Image.LANCZOS)
+    sidebar.paste(full, (4, 70), full)
+    sidebar.convert("RGB").save(TAURI_ICONS / "nsis-sidebar.bmp")
+
+    header = Image.new("RGBA", (150, 57), (255, 255, 255, 255))
+    small = mark.resize((49, 49), Image.LANCZOS)
+    header.paste(small, (150 - 49 - 6, 4), small)
+    header.convert("RGB").save(TAURI_ICONS / "nsis-header.bmp")
+
+
 def main() -> None:
     logo = Image.open(LOGO).convert("RGBA")
     mark = crop_mark(logo)
@@ -71,6 +84,7 @@ def main() -> None:
                        "Square310x310Logo.png": 310, "StoreLogo.png": 50}.items():
         app_icon(mark, size).save(TAURI_ICONS / name)
     app_icon(mark, 64).save(PUBLIC / "favicon.png")
+    installer_images(logo, mark)
     print("Icons written to", TAURI_ICONS)
 
 
