@@ -63,6 +63,26 @@ Task: extract the work-related points from this conversation for today's report.
 Respond with JSON only: {{"points": ["...", "..."]}}"""
 
 
+_EDIT_SYSTEM = "You edit daily engineering reports exactly as their author asks."
+
+_EDIT_PROMPT = """Here is a daily work report as JSON. "items" are projects (code changes) and chat
+conversations; each has a list of one-sentence "points".
+
+Report:
+{report}
+
+The author's request:
+{instruction}
+
+Rules:
+- Change only what the request asks for; keep everything else word for word.
+- Keep every item's "key". Don't add or remove items. Something that fits no item goes in "note".
+- Points are single sentences. Keep a "[Major]" prefix where it is; add one only when asked.
+- Don't invent work that is in neither the report nor the request.
+- Keep the report's language ({language}) unless the request asks for another one.
+Respond with JSON only, same shape: {{"subject": "...", "note": "...", "items": [{{"key": "...", "points": ["..."]}}]}}"""
+
+
 class AIClient:
     def __init__(self, api_key: str, base_url: str = GEMINI_BASE_URL, model: str = DEFAULT_MODEL,
                  fallback_models: list[str] | None = None, language: str = "English",
@@ -154,6 +174,20 @@ class AIClient:
             diff=project.get("diff_text") or "(no diff available)",
             max_points=self.max_points, extra=self.extra,
         ))
+
+    def edit_report(self, report: dict, instruction: str) -> dict:
+        raw = self.chat(_EDIT_PROMPT.format(report=json.dumps(report, ensure_ascii=False, indent=1),
+                                            instruction=instruction.strip(), language=self.language),
+                        system=_EDIT_SYSTEM, waits=(0, 10))
+        start, end = raw.find("{"), raw.rfind("}")
+        if start != -1 and end > start:
+            try:
+                data = json.loads(raw[start:end + 1])
+                if isinstance(data, dict):
+                    return data
+            except json.JSONDecodeError:
+                pass
+        raise RuntimeError("The AI answer could not be read. Try again or say it differently.")
 
     def summarize_conversation(self, conv: dict) -> list[str]:
         lines = []

@@ -9,7 +9,7 @@ from datetime import date
 from email.message import EmailMessage
 from email.utils import formataddr, make_msgid
 
-from . import connectors, history, storage
+from . import connectors, drafts, history, storage
 from .ai import enrich
 from .mail import imap, smtp
 from .models import CODE_TYPES, Profile, now_iso, profile_problems
@@ -83,6 +83,9 @@ class RunResult:
     recipients: list[str] = field(default_factory=list)
     error: str = ""
     run_id: str = ""
+    projects: list[dict] = field(default_factory=list, repr=False)
+    conversations: list[dict] = field(default_factory=list, repr=False)
+    draft: dict | None = None  # {"id", "content"} for previews and tests, so they can be edited
 
     def step(self, key: str, status: str, message: str, **extra) -> None:
         self.steps.append({"key": key, "status": status, "message": message, **extra})
@@ -94,6 +97,8 @@ class RunResult:
             out["html"] = self.report.html_for_display()
             out["text"] = self.report.text
             out["stats"] = self.report.stats
+        if include_html and self.draft:
+            out["draft"] = self.draft
         return out
 
 
@@ -162,6 +167,32 @@ def build_message(plan: EmailPlan, report: Report, sender_name: str) -> EmailMes
         msg.get_payload()[1].add_related(logo_bytes(), "image", "png", cid=f"<{LOGO_CID}>",
                                          filename="rabshoot.png")
     return msg
+
+
+def _deliver(profile: Profile, result: RunResult, test_to: str | None = None,
+             plan: EmailPlan | None = None, note: str = "") -> None:
+    """Email result.report to the report's recipients (or only to test_to) and record the step."""
+    try:
+        conn = storage.get_connection(profile.sender_connection_id or "")
+        meta, password = connectors.email_credentials(conn)
+        if test_to:
+            plan = EmailPlan(sender=meta["address"], subject="[Test] " + result.subject,
+                             to=[test_to], cc=[], bcc=[])
+        else:
+            plan = plan or plan_email(profile, meta, password, result.subject)
+            if not plan.parent:
+                plan.subject = result.subject
+        msg = build_message(plan, result.report, profile.delivery.sender_name
+                            or meta.get("display_name", ""))
+        smtp.send(meta, password, msg, plan.to + plan.cc + plan.bcc)
+        result.subject, result.recipients = plan.subject, plan.to + plan.cc
+        result.step("email", "ok", _sent_message(plan) + note)
+        result.status = "sent"
+    except Exception as exc:
+        log.exception("Sending failed")
+        result.step("email", "error", connectors._friendly(exc))
+        result.status = "failed"
+        result.error = connectors._friendly(exc)
 
 
 def _updater(tracker: Progress | None):
@@ -285,6 +316,7 @@ def build(profile: Profile, day: date | None = None,
     _updater(tracker)("render")
     result.report = render(profile, window, projects, convs)
     result.subject = result.report.subject
+    result.projects, result.conversations = projects, convs
     return result, window
 
 
@@ -362,27 +394,12 @@ def run(profile: Profile, trigger: str = "manual", day: date | None = None,
                 result.step("email", "warn", f"Recipients could not be resolved: "
                             f"{connectors._friendly(exc)}")
         else:
-            try:
-                conn = storage.get_connection(profile.sender_connection_id or "")
-                meta, password = connectors.email_credentials(conn)
-                if test_to:
-                    plan = EmailPlan(sender=meta["address"], subject="[Test] " + result.subject,
-                                     to=[test_to], cc=[], bcc=[])
-                else:
-                    plan = early_plan
-                    if not plan.parent:
-                        plan.subject = result.subject
-                msg = build_message(plan, result.report, profile.delivery.sender_name
-                                    or meta.get("display_name", ""))
-                smtp.send(meta, password, msg, plan.to + plan.cc + plan.bcc)
-                result.subject, result.recipients = plan.subject, plan.to + plan.cc
-                result.step("email", "ok", _sent_message(plan))
-                result.status = "sent"
-            except Exception as exc:
-                log.exception("Sending failed")
-                result.step("email", "error", connectors._friendly(exc))
-                result.status = "failed"
-                result.error = connectors._friendly(exc)
+            _deliver(profile, result, test_to, plan=early_plan)
+
+        if trigger in ("preview", "test"):
+            draft = drafts.save(profile.id, tz_day, result.report.subject, result.projects,
+                                result.conversations, result.steps)
+            result.draft = {"id": draft.id, "content": draft.content.model_dump()}
 
         errors = [s for s in result.steps if s["status"] == "error"]
         if result.status != "failed" and errors and not result.report.stats["projects"] \
@@ -398,6 +415,40 @@ def run(profile: Profile, trigger: str = "manual", day: date | None = None,
         if run_id:
             history.finish_run(run_id, "failed", error=str(exc))
         tracker.finish("failed", str(exc))
+        return RunResult(status="failed", error=str(exc), run_id=run_id)
+    finally:
+        with _running_lock:
+            _running.discard(profile.id)
+
+
+def send_draft(profile: Profile, draft: drafts.Draft, content: drafts.DraftContent,
+               test_to: str | None = None) -> RunResult:
+    """Send a previewed report as edited, without collecting or summarizing again."""
+    with _running_lock:
+        if profile.id in _running:
+            raise ProfileBusy(f"'{profile.name}' is already running")
+        _running.add(profile.id)
+    run_id = ""
+    try:
+        problems = profile_problems(profile, storage.connections_by_id())
+        if problems:
+            return RunResult(status="failed", error="Setup incomplete: " + ", ".join(problems))
+        run_id = history.start_run(profile.id, profile.name, "test" if test_to else "manual",
+                                   draft.day.isoformat())
+        projects, convs = drafts.apply(draft, content)
+        window = DayWindow.for_day(draft.day, profile.schedule.timezone)
+        report = render(profile, window, projects, convs, note=content.note, subject=content.subject)
+        result = RunResult(steps=[dict(s) for s in draft.steps], report=report,
+                           subject=report.subject, run_id=run_id)
+        _deliver(profile, result, test_to, note=" — edited before sending")
+        history.finish_run(run_id, result.status, error=result.error, subject=result.subject,
+                           recipients=result.recipients, steps=result.steps,
+                           html=report.html_for_display(), text=report.text)
+        return result
+    except Exception as exc:
+        log.exception("Sending the edited report failed")
+        if run_id:
+            history.finish_run(run_id, "failed", error=str(exc))
         return RunResult(status="failed", error=str(exc), run_id=run_id)
     finally:
         with _running_lock:

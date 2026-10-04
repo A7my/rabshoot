@@ -1,6 +1,6 @@
 [package]
 name = "rabshoot"
-version = "0.1.4"
+version = "0.1.5"
 description = "RabShoot — Collect • Combine • Send"
 authors = ["Mohamed Azmy"]
 edition = "2021"

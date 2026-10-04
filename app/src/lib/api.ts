@@ -1,7 +1,7 @@
 import { engineInfo } from "./platform";
 import type {
-  AuthLinks, CodeProject, Connection, ConnectionType, Contact, EmailProvider, Health, MailThread,
-  Profile, ProfileView, Run, RunProgress, RunResult, Settings, SlackConversation,
+  AuthLinks, CodeProject, Connection, ConnectionType, Contact, DraftContent, DraftView, EmailProvider,
+  Health, MailThread, Profile, ProfileView, Run, RunProgress, RunResult, Settings, SlackConversation,
 } from "./types";
 
 let enginePromise: Promise<{ url: string; token: string }> | null = null;
@@ -116,6 +116,12 @@ export const api = {
     request<{ started: boolean }>("POST", `/profiles/${id}/send`, day ? { day } : {}),
   progress: (id: string) =>
     request<{ running: boolean; progress: RunProgress | null }>("GET", `/profiles/${id}/progress`),
+  draftRender: (id: string, content: DraftContent) =>
+    request<DraftView>("POST", `/drafts/${id}/render`, { content }),
+  draftAI: (id: string, content: DraftContent, instruction: string) =>
+    request<DraftView & { content: DraftContent }>("POST", `/drafts/${id}/ai`, { content, instruction }),
+  draftSend: (id: string, content: DraftContent, test = false, to?: string) =>
+    request<RunResult>("POST", `/drafts/${id}/send`, { content, test, to }),
 
   runs: (profileId?: string, limit = 100) =>
     request<Run[]>("GET", `/runs${q({ profile_id: profileId, limit: String(limit) })}`),

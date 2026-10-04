@@ -7,6 +7,10 @@
 {% else %}
 {{ stats.commits }} commits · {{ stats.merged }} merged · {{ stats.issues_closed }} issues closed · {{ stats.slack_messages }} messages
 {% endif %}
+{% if note %}
+
+{{ note }}
+{% endif %}
 {% if projects %}
 
 CODE CHANGES

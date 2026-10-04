@@ -127,7 +127,7 @@ export function Wizard({ mode }: { mode: "onboarding" | "new" }) {
     slack: <SlackEditor profile={profile} update={update} />,
     ai: <AIEditor profile={profile} update={update} />,
     schedule: <ScheduleEditor profile={profile} update={update} />,
-    preview: profile.id ? <PreviewPanel profileId={profile.id} senderAddress={sender?.meta.address} /> : null,
+    preview: profile.id ? <PreviewPanel profileId={profile.id} senderAddress={sender?.meta.address} canSend={false} /> : null,
   };
   const heading: Record<StepKey, [string, string]> = {
     welcome: [t("wizard.welcomeTitle"), t("wizard.welcomeBody")],

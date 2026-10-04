@@ -165,6 +165,26 @@ export interface RunResult {
   html?: string;
   text?: string;
   stats?: Record<string, number>;
+  draft?: { id: string; content: DraftContent };
+}
+
+export interface DraftItem {
+  key: string;
+  kind: "project" | "conversation";
+  name: string;
+  points: string[];
+}
+
+export interface DraftContent {
+  subject: string;
+  note: string;
+  items: DraftItem[];
+}
+
+export interface DraftView {
+  html: string;
+  subject: string;
+  stats: Record<string, number>;
 }
 
 export interface Settings {

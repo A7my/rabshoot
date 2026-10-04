@@ -1,8 +1,10 @@
-import { Eye, Send } from "lucide-react";
-import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Eye, Pencil, Send } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api } from "../lib/api";
-import type { RunProgress, RunResult, Step } from "../lib/types";
+import type { DraftContent, RunProgress, RunResult, Step } from "../lib/types";
+import { ReportEditor } from "./ReportEditor";
 import { RunProgressView } from "./RunProgress";
 import { Alert, Badge, Button, Card, Spinner, StatusDot } from "./ui";
 
@@ -28,18 +30,29 @@ export function EmailFrame({ html }: { html: string }) {
   );
 }
 
-/** Builds today's report, or the given past `day` when set. */
-export function PreviewPanel({ profileId, senderAddress, day }: { profileId: string; senderAddress?: string; day?: string }) {
+/** Builds today's report, or the given past `day` when set; the result can be edited and sent as is. */
+export function PreviewPanel({ profileId, senderAddress, day, canSend = true }: {
+  profileId: string; senderAddress?: string; day?: string; canSend?: boolean;
+}) {
   const { t } = useTranslation();
+  const qc = useQueryClient();
   const [result, setResult] = useState<RunResult | null>(null);
-  const [busy, setBusy] = useState<"preview" | "test" | null>(null);
+  const [busy, setBusy] = useState<"preview" | "test" | "draftTest" | "send" | null>(null);
   const [error, setError] = useState("");
   const [sentTo, setSentTo] = useState("");
-
   const [progress, setProgress] = useState<RunProgress | null>(null);
 
+  const [draft, setDraft] = useState<{ id: string; content: DraftContent } | null>(null);
+  const [html, setHtml] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [edited, setEdited] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [sentReal, setSentReal] = useState("");
+  const renderSeq = useRef(0);
+
   const run = async (kind: "preview" | "test") => {
-    setBusy(kind); setError(""); setSentTo(""); setProgress(null);
+    setBusy(kind); setError(""); setSentTo(""); setSentReal(""); setProgress(null); setConfirming(false);
     let polling = true;
     const poll = async () => {
       while (polling) {
@@ -54,6 +67,9 @@ export function PreviewPanel({ profileId, senderAddress, day }: { profileId: str
     try {
       const r = kind === "preview" ? await api.preview(profileId, day) : await api.testSend(profileId, senderAddress, day);
       setResult(r);
+      setDraft(r.draft ?? null);
+      setHtml(r.html ?? "");
+      setEdited(false);
       if (r.status === "failed") setError(r.error);
       else if (kind === "test") setSentTo(r.recipients.join(", "));
     } catch (e: any) {
@@ -65,6 +81,51 @@ export function PreviewPanel({ profileId, senderAddress, day }: { profileId: str
     }
   };
 
+  useEffect(() => {
+    if (!draft || !edited) return;
+    const seq = ++renderSeq.current;
+    setUpdating(true);
+    const timer = setTimeout(async () => {
+      try {
+        const view = await api.draftRender(draft.id, draft.content);
+        if (seq === renderSeq.current) setHtml(view.html);
+      } catch (e: any) {
+        if (seq === renderSeq.current) setError(e.message);
+      } finally {
+        if (seq === renderSeq.current) setUpdating(false);
+      }
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [draft, edited]);
+
+  const changeContent = (content: DraftContent) => {
+    if (!draft) return;
+    setDraft({ ...draft, content });
+    setEdited(true);
+    setSentReal("");
+  };
+
+  const sendDraft = async (test: boolean) => {
+    if (!draft) return;
+    setBusy(test ? "draftTest" : "send"); setError(""); setSentTo("");
+    try {
+      const r = await api.draftSend(draft.id, draft.content, test, test ? senderAddress : undefined);
+      if (r.status === "failed") setError(r.error);
+      else if (test) setSentTo(r.recipients.join(", "));
+      else {
+        setSentReal(r.recipients.join(", "));
+        qc.invalidateQueries({ queryKey: ["profiles"] });
+        qc.invalidateQueries({ queryKey: ["runs"] });
+      }
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setBusy(null);
+      setConfirming(false);
+    }
+  };
+
+  const building = busy === "preview" || busy === "test";
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2">
@@ -75,9 +136,10 @@ export function PreviewPanel({ profileId, senderAddress, day }: { profileId: str
           {t("preview.sendTest")}
         </Button>
       </div>
-      {busy && (progress ? <RunProgressView progress={progress} /> : <Spinner label={t("preview.building")} />)}
+      {building && (progress ? <RunProgressView progress={progress} /> : <Spinner label={t("preview.building")} />)}
       {error && <Alert kind="error">{error}</Alert>}
       {sentTo && <Alert kind="ok">{t("preview.testSent", { to: sentTo })}</Alert>}
+      {sentReal && <Alert kind="ok">{t("preview.sentReal", { to: sentReal })}</Alert>}
       {result && (
         <>
           <Card className="space-y-3 p-4">
@@ -94,7 +156,41 @@ export function PreviewPanel({ profileId, senderAddress, day }: { profileId: str
               </div>
             )}
           </Card>
-          {result.html && <EmailFrame html={result.html} />}
+
+          {draft && (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant={editing ? "secondary" : "primary"} icon={<Pencil className="h-4 w-4" />} disabled={building}
+                onClick={() => setEditing(!editing)}>
+                {editing ? t("preview.doneEditing") : t("preview.edit")}
+              </Button>
+              <Button icon={<Send className="h-4 w-4" />} loading={busy === "draftTest"} disabled={!!busy || updating}
+                onClick={() => sendDraft(true)}>
+                {t("preview.sendVersionTest")}
+              </Button>
+              {canSend && (
+                <Button variant="brand" icon={<Send className="h-4 w-4" />} disabled={!!busy || updating || !!sentReal}
+                  onClick={() => setConfirming(true)}>
+                  {t("preview.sendReal")}
+                </Button>
+              )}
+              {edited && <Badge tone="warn">{t("preview.edited")}</Badge>}
+              {updating && <Spinner label={t("preview.updating")} />}
+            </div>
+          )}
+          {confirming && (
+            <Alert kind="warn" title={t("preview.confirmTitle")}>
+              {result.recipients.length ? t("preview.confirmBody", { to: result.recipients.join(", ") }) : t("preview.confirmBodyNoList")}
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button variant="brand" size="sm" icon={<Send className="h-4 w-4" />} loading={busy === "send"} onClick={() => sendDraft(false)}>
+                  {t("preview.confirmYes")}
+                </Button>
+                <Button variant="ghost" size="sm" disabled={busy === "send"} onClick={() => setConfirming(false)}>{t("common.cancel")}</Button>
+              </div>
+            </Alert>
+          )}
+
+          {draft && editing && <ReportEditor draftId={draft.id} content={draft.content} onChange={changeContent} />}
+          {html && <EmailFrame html={html} />}
         </>
       )}
     </div>

@@ -61,6 +61,10 @@
 
   <tr><td style="padding:0 28px 24px;">
 
+  {% if note %}
+  <div style="margin:18px 0 0;padding:12px 14px;background:#F5F7FB;border-left:4px solid #2F7BFF;border-radius:6px;font-size:14px;line-height:1.55;" dir="auto">{{ note | nl2br }}</div>
+  {% endif %}
+
   {% if projects %}
   {{ heading("Code changes", "#2F7BFF") }}
   {% for p in projects %}

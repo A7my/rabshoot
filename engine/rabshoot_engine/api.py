@@ -8,11 +8,12 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from . import __version__, connectors, history, paths, pipeline, storage
+from . import __version__, connectors, drafts, history, paths, pipeline, storage
 from .auth import github_device, gitlab_oauth, oauth_status, slack_oauth
 from .mail import imap
 from .mail.providers import PROVIDERS, guess_provider
 from .models import Connection, ConnectionType, Profile, Settings, profile_problems
+from .render import render as render_report
 from .scheduler import Scheduler
 from .secrets_store import store as secret_store
 from .sources import slack as slack_source
@@ -43,6 +44,19 @@ class TestSendIn(BaseModel):
 
 class RunIn(BaseModel):
     day: date | None = None
+
+
+class DraftIn(BaseModel):
+    content: drafts.DraftContent
+
+
+class DraftAIIn(DraftIn):
+    instruction: str
+
+
+class DraftSendIn(DraftIn):
+    test: bool = False
+    to: str | None = None
 
 
 def report_day(profile: Profile, day: date | None) -> date | None:
@@ -364,6 +378,57 @@ def create_app(token: str, scheduler: Scheduler | None = None) -> FastAPI:
             return {"started": True}
         result = pipeline.run(profile, trigger="manual", day=day)
         return result.as_dict()
+
+    # --- drafts (a previewed report, edited before sending) ----------------------
+
+    def get_draft(draft_id: str) -> tuple[drafts.Draft, Profile]:
+        try:
+            draft = drafts.get(draft_id)
+        except KeyError:
+            raise HTTPException(404, "This preview has expired. Build the preview again.")
+        return draft, get_prof(draft.profile_id)
+
+    def draft_view(profile: Profile, draft: drafts.Draft, content: drafts.DraftContent) -> dict:
+        projects, convs = drafts.apply(draft, content)
+        window = DayWindow.for_day(draft.day, profile.schedule.timezone)
+        report = render_report(profile, window, projects, convs, note=content.note,
+                               subject=content.subject)
+        return {"html": report.html_for_display(), "subject": report.subject, "stats": report.stats}
+
+    @app.post("/drafts/{draft_id}/render", dependencies=guarded)
+    def render_draft(draft_id: str, body: DraftIn):
+        draft, profile = get_draft(draft_id)
+        return draft_view(profile, draft, body.content)
+
+    @app.post("/drafts/{draft_id}/ai", dependencies=guarded)
+    def ai_edit_draft(draft_id: str, body: DraftAIIn):
+        draft, profile = get_draft(draft_id)
+        if not body.instruction.strip():
+            raise HTTPException(400, "Write what the AI should change")
+        try:
+            conn = storage.get_connection(profile.ai_connection_id or "")
+        except KeyError:
+            raise HTTPException(400, "This report has no AI account. Add one in the report's AI tab.")
+        try:
+            answer = connectors.ai_client(conn, profile.report.language).edit_report(
+                body.content.model_dump(), body.instruction)
+        except Exception as exc:
+            log.warning("AI edit failed: %s", exc)
+            fail(exc)
+        content = drafts.merge_ai(body.content, answer)
+        return {"content": content.model_dump(), **draft_view(profile, draft, content)}
+
+    @app.post("/drafts/{draft_id}/send", dependencies=guarded)
+    def send_draft(draft_id: str, body: DraftSendIn):
+        draft, profile = get_draft(draft_id)
+        to = None
+        if body.test:
+            to = body.to or storage.get_connection(profile.sender_connection_id or "").meta.get("address")
+        try:
+            result = pipeline.send_draft(profile, draft, body.content, test_to=to)
+        except pipeline.ProfileBusy as exc:
+            raise HTTPException(409, str(exc))
+        return result.as_dict(include_html=True)
 
     # --- runs ------------------------------------------------------------------
 

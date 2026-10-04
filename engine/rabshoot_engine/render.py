@@ -58,6 +58,7 @@ def _env(html: bool) -> Environment:
                       trim_blocks=True, lstrip_blocks=True, keep_trailing_newline=True)
     env.filters["oneline"] = _oneline
     env.filters["codify"] = _codify
+    env.filters["nl2br"] = lambda text: Markup(str(escape(text)).replace("\n", "<br>"))
     return env
 
 
@@ -98,9 +99,11 @@ def build_context(profile: Profile, window: DayWindow, projects: list[dict],
 
 
 def render(profile: Profile, window: DayWindow, projects: list[dict],
-           conversations: list[dict]) -> Report:
+           conversations: list[dict], note: str = "", subject: str = "") -> Report:
+    """note: the author's own text at the top; subject: an edited subject instead of the template."""
     context = build_context(profile, window, projects, conversations)
-    subject = (profile.delivery.subject or "{title} — {date}").replace(
+    context["note"] = note.strip()
+    subject = subject.strip() or (profile.delivery.subject or "{title} — {date}").replace(
         "{title}", context["title"]).replace("{date}", context["date_iso"])
     return Report(
         title=context["title"],
