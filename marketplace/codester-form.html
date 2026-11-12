@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RabShoot - Codester form helper</title>
+<style>
+  :root{
+    --bg:#f4f6f8; --card:#fff; --text:#1c2230; --muted:#667085; --line:#dfe3ea;
+    --brand:#2f7bff; --brand-d:#1d5fd6; --ok:#10b981; --warn:#d97706; --bad:#dc2626;
+    --code:#0f1420; --codetext:#d6e2ff; --chip:#eaf1ff; --chiptext:#1d4fbf;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0d1017; --card:#151a24; --text:#e6e8f0; --muted:#97a0b3; --line:#262d3d;
+      --chip:#1b2740; --chiptext:#9bbcff; --code:#0a0d14; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  .wrap{max-width:900px;margin:0 auto;padding:24px 16px 80px}
+  h1{font-size:24px;margin:0 0 4px}
+  .sub{color:var(--muted);margin:0 0 20px}
+  .bar{position:sticky;top:0;z-index:5;background:var(--bg);padding:10px 0;margin-bottom:8px;display:flex;gap:10px;align-items:center;border-bottom:1px solid var(--line)}
+  .bar .prog{flex:1;height:8px;background:var(--line);border-radius:99px;overflow:hidden}
+  .bar .prog i{display:block;height:100%;width:0;background:var(--ok);transition:width .25s}
+  .bar span{font-size:13px;color:var(--muted);white-space:nowrap}
+  h2.sec{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:30px 0 10px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:12px;transition:opacity .2s}
+  .card.done{opacity:.6}
+  .head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px}
+  .label{font-weight:650}
+  .hint{color:var(--muted);font-size:13px;margin-top:2px}
+  .count{font-size:12px;font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}
+  .count.over{color:var(--bad);font-weight:700}
+  .count.ok{color:var(--ok)}
+  button.copy{cursor:pointer;border:0;background:var(--brand);color:#fff;border-radius:8px;padding:8px 14px;font:600 13px system-ui;white-space:nowrap}
+  button.copy:hover{background:var(--brand-d)}
+  button.copy.ok{background:var(--ok)}
+  button.alt{cursor:pointer;border:1px solid var(--line);background:transparent;color:var(--text);border-radius:8px;padding:5px 10px;font:600 12px system-ui}
+  pre.val{margin:0;background:var(--code);color:var(--codetext);border-radius:8px;padding:12px;white-space:pre-wrap;word-break:break-word;font:13px/1.5 ui-monospace,Menlo,Consolas,monospace;max-height:340px;overflow:auto}
+  .preview{border:1px dashed var(--line);border-radius:8px;padding:4px 14px;margin-top:8px}
+  .preview h2,.preview h3{margin:14px 0 6px}
+  .tools{display:flex;gap:8px;margin-top:8px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{background:var(--chip);color:var(--chiptext);border-radius:99px;padding:3px 11px;font-size:13px;font-weight:600}
+  .chip.no{background:transparent;border:1px dashed var(--line);color:var(--muted);font-weight:500}
+  .note{font-size:13px;color:var(--muted);margin-top:8px}
+  .tick{display:flex;flex-direction:column;gap:12px}
+  .tick b{display:block;font-size:13px;margin-bottom:5px}
+  .banner{background:#fff7e0;color:#7a5200;border:1px solid #f3d98b;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:14px}
+  @media (prefers-color-scheme: dark){.banner{background:#2a2111;color:#f0cf85;border-color:#5a4718}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>RabShoot - form helper</h1>
+  <p class="sub">Copy each value into the matching field on the marketplace form. Ticks (checkboxes) are shown as chips: just tick them by hand.</p>
+  <div class="banner">The marketplace forbids contact details and promotions of other products in the description. Nothing below contains any. Keep it that way if you edit.</div>
+  <div class="bar"><div class="prog"><i id="progbar"></i></div><span id="progtxt">0 / 0 copied</span></div>
+  <div id="app"></div>
+</div>
+
+<script>
+/*DATA-START*/
+const SECTIONS = [
+{
+  title: "Name & Description",
+  items: [
+    { id:"name", label:"Name", hint:"Max 50 characters", type:"text", limit:50,
+      value:"RabShoot - Daily Work Report Generator" },
+    { id:"short", label:"Short description", hint:"Max 130 characters", type:"text", limit:130,
+      value:"Desktop app that writes your daily work report from GitLab, GitHub and Slack with AI and emails it on schedule." },
+    { id:"desc", label:"Description", hint:"Paste into the editor after clicking the HTML button", type:"html",
+      value:`<h2>Stop writing daily reports by hand</h2>
+<p>RabShoot is a desktop app for Windows and Linux that writes your daily work report for you. At the time you choose, it collects what you actually did that day, summarizes it with AI in clear English, and emails a clean, branded report from your own mailbox.</p>
+
+<h3>What it collects</h3>
+<ul>
+  <li><strong>GitLab and GitHub:</strong> commits, merge/pull requests and issues. The real code changes are read and explained in plain English.</li>
+  <li><strong>Slack (optional):</strong> messages from the channels and chats you pick. Greetings and small talk are ignored, and long threads are reduced to decisions and next steps.</li>
+</ul>
+
+<h3>How it works</h3>
+<ol>
+  <li>Connect your sender mailbox, your code accounts, and an AI key in a short setup wizard (about 5 minutes).</li>
+  <li>Choose who receives the report, or reply-all inside an existing email thread such as your team's "Daily updates" thread.</li>
+  <li>Pick a schedule: repeating, one time, or send now.</li>
+  <li>RabShoot runs quietly in the system tray and sends the report on time.</li>
+</ol>
+
+<h3>Private by design</h3>
+<p>Everything runs on your computer. There is no RabShoot server and no account to create. Passwords and tokens are kept in the system keychain. RabShoot only reads from GitLab, GitHub and Slack; it never changes code or posts messages. Lock files, .env files, keys and certificates are never sent to the AI, and secret-looking values in diffs are masked.</p>
+
+<h3>What is included</h3>
+<ul>
+  <li>Full source code: Tauri 2 desktop shell (Rust), React + TypeScript + Tailwind interface, and a Python engine (FastAPI, APScheduler, SQLite).</li>
+  <li>Automated engine tests.</li>
+  <li>Build scripts for the Windows installer and the Linux .deb package.</li>
+  <li>User guide in English and Arabic, and a privacy document.</li>
+</ul>
+<p>The interface is available in English and Arabic (right-to-left supported). No license key is needed.</p>` },
+    { id:"features", label:"Features", hint:"HTML list", type:"html",
+      value:`<ul>
+  <li>Writes the daily work report automatically from GitLab, GitHub and Slack</li>
+  <li>AI summaries (Google Gemini) that explain real code changes in plain English</li>
+  <li>Slack threads reduced to decisions and next steps; small talk ignored</li>
+  <li>Sends from your own mailbox: Gmail, Outlook, Yahoo, iCloud, Zoho or any IMAP/SMTP</li>
+  <li>Send to chosen recipients (To / CC / BCC) or reply-all in an existing email thread</li>
+  <li>Flexible schedule: repeating (days and time), one time, or send now</li>
+  <li>Send or preview an old report for any past day</li>
+  <li>Live preview of the exact email, plus a test send to yourself</li>
+  <li>Edit the whole report as text before sending, or polish it with AI</li>
+  <li>Several reports at once, each with its own sender, recipients, sources and time</li>
+  <li>Quiet-day skip: no activity means no email</li>
+  <li>Missed send goes out when the computer starts</li>
+  <li>History of every run with the exact email that was sent; failed runs can be re-sent</li>
+  <li>System tray app that starts with your computer</li>
+  <li>English and Arabic interface with right-to-left support</li>
+  <li>Secrets stored in the system keychain; masked secrets in code diffs</li>
+  <li>Works with gitlab.com, self-hosted GitLab and GitHub</li>
+  <li>Windows installer and Linux .deb build scripts included</li>
+</ul>` },
+    { id:"req", label:"Requirements", hint:"HTML list", type:"html",
+      value:`<ul>
+  <li>Windows 10 / 11 (64-bit), or Ubuntu 22.04+ / Debian 12+ / Linux Mint 21+ (64-bit)</li>
+  <li>Internet connection</li>
+  <li>A mailbox to send the report from, with an app password (Gmail, Outlook, Yahoo, iCloud, Zoho or any IMAP/SMTP)</li>
+  <li>A GitLab and/or GitHub account</li>
+  <li>An AI key: a free Google Gemini key from Google AI Studio works</li>
+  <li>Slack workspace access (optional)</li>
+  <li>To build from source: Python 3.11+, Node.js 20+ (22 recommended), and Rust (stable) with the Tauri system libraries for the desktop shell</li>
+</ul>` },
+    { id:"instr", label:"Instructions", hint:"HTML steps", type:"html",
+      value:`<h3>Use the app</h3>
+<ol>
+  <li>Install: on Windows run the setup .exe (if SmartScreen appears, click More info, then Run anyway; the app is not code-signed yet). On Linux run <code>sudo apt install ./RabShoot-linux-amd64.deb</code>.</li>
+  <li>Open RabShoot from the Start menu / apps menu. The setup wizard starts.</li>
+  <li>Sender email: choose your provider and paste an app password.</li>
+  <li>Recipients: add people, or pick an existing email thread to reply-all.</li>
+  <li>Code sources: sign in to GitLab and/or GitHub and pick the projects.</li>
+  <li>Slack (optional): connect your workspace and pick channels.</li>
+  <li>AI key: paste your Google Gemini key.</li>
+  <li>Schedule: pick the time and days, then preview the email or send a test to yourself.</li>
+</ol>
+<h3>Build from source</h3>
+<ol>
+  <li>Unzip the package and open <code>SETUP.md</code>.</li>
+  <li>Install the engine: <code>python -m venv .venv</code> then <code>.venv/bin/pip install -e "engine[dev]"</code> inside <code>src/</code>.</li>
+  <li>Run the tests: <code>cd engine &amp;&amp; ../.venv/bin/python -m pytest -q</code>.</li>
+  <li>Run the interface: <code>cd app &amp;&amp; npm ci &amp;&amp; npm run dev</code>.</li>
+  <li>Build installers: <code>python scripts/build_engine.py</code> then <code>cd app &amp;&amp; npx tauri build</code>.</li>
+</ol>
+<p>The full step-by-step guide is in <code>SETUP.md</code> and in <code>src/docs</code> (English and Arabic).</p>` },
+    { id:"hours", label:"Development time (hours)", hint:"Hours needed to build it from scratch (the project plan estimates about 36 working days)", type:"text",
+      value:"280" }
+  ]
+},
+{
+  title: "Category & Files",
+  items: [
+    { id:"cat", label:"Category", type:"ticks", groups:[
+      { name:"Pick one (closest available, in this order)", chips:["Desktop Apps / Desktop Application","Python","Utilities / Tools","Productivity","Other (they will create a category if needed)"] }
+    ], note:"Pick the first one that exists in the dropdown." },
+    { id:"files", label:"Files included", type:"ticks", groups:[
+      { name:"Tick", chips:[".py",".ts",".tsx","JavaScript .js",".json","package.json",".css",".html",".rs",".md",".yml/.yaml","Dockerfile"] },
+      { name:"Do not tick", no:true, chips:[".php",".sql",".java",".go",".vue",".svelte",".blade.php",".twig"] }
+    ]}
+  ]
+},
+{
+  title: "Compatibility (checkboxes)",
+  items: [
+    { id:"ver", label:"Software version", type:"ticks", groups:[
+      { name:"Tick", chips:["Python 3.11","Python 3.12","Node.js 22"] } ],
+      note:"Python 3.13 and Node 24 are not tested, so leave them unticked." },
+    { id:"fw", label:"Software framework", type:"ticks", groups:[
+      { name:"Tick", chips:["FastAPI","React"] } ] },
+    { id:"db", label:"Database", type:"ticks", groups:[
+      { name:"Tick", chips:["SQLite 3.x"] } ] },
+    { id:"css", label:"HTML/CSS Framework", type:"ticks", groups:[
+      { name:"Tick", chips:["Tailwind CSS"] } ] },
+    { id:"js", label:"JavaScript Framework", type:"ticks", groups:[
+      { name:"Tick", chips:["React"] } ] },
+    { id:"lang", label:"Programming language", type:"ticks", groups:[
+      { name:"Tick", chips:["Python","TypeScript","Rust"] },
+      { name:"Optional", chips:["JavaScript"] } ] }
+  ]
+},
+{
+  title: "Tags",
+  items: [
+    { id:"tags", label:"Tags", hint:"Max 15 keywords, lowercase, separated by commas", type:"text", tagsLimit:15,
+      value:"desktop app, daily report, work report, gitlab, github, slack, gemini, ai summary, email automation, python, tauri, react, productivity, scheduler, standup" }
+  ]
+},
+{
+  title: "Message to reviewer",
+  items: [
+    { id:"comment", label:"Comment", hint:"Optional, but useful for review", type:"text",
+      value:`Hello, and thank you for reviewing RabShoot.
+
+RabShoot is a desktop app (Windows and Linux) that writes a daily work report from GitLab, GitHub and Slack with AI and emails it on a schedule.
+
+Package layout: manifest.json, README.md, SETUP.md, LICENSE.md and src/ at the root of the zip. src/ holds the Tauri/React app, the Python engine with its tests, packaging scripts and docs.
+
+Network activity (all disclosed in src/docs/privacy.md): read-only requests to GitLab, GitHub and Slack with the user's own token; code diffs and picked Slack messages sent to the user's AI provider (Google Gemini by default) with secrets masked; and email sent through the user's own SMTP server. There is no RabShoot server, no analytics and no telemetry. Passwords and tokens are stored in the system keychain. No license key is required.
+
+The Windows installer is not code-signed yet; this is mentioned in the instructions. Please tell me if anything needs to change and I will fix it quickly.` },
+    { id:"free", label:"Apply for free file of the week", type:"ticks", groups:[{name:"Leave unticked", no:true, chips:["Free file of the week"]}] },
+    { id:"flash", label:"Apply for flash sale", type:"ticks", groups:[{name:"Leave unticked (you can apply later)", no:true, chips:["Flash sale"]}] },
+    { id:"price", label:"Price ($)", hint:"Excludes the buyer fee. Suggested starting price; change as you like.", type:"text",
+      value:"29" }
+  ]
+}
+];
+/*DATA-END*/
+
+const $ = (s, r=document) => r.querySelector(s);
+const esc = s => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const store = {
+  get(k){ try{ return localStorage.getItem(k) }catch(e){ return null } },
+  set(k,v){ try{ localStorage.setItem(k,v) }catch(e){} }
+};
+
+function copyText(text){
+  if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+  return new Promise((res, rej) => {
+    const t = document.createElement("textarea");
+    t.value = text; t.style.position = "fixed"; t.style.opacity = "0";
+    document.body.appendChild(t); t.select();
+    try { document.execCommand("copy") ? res() : rej() } catch(e){ rej(e) }
+    t.remove();
+  });
+}
+
+const copyables = [];
+const app = $("#app");
+
+SECTIONS.forEach(sec => {
+  const h = document.createElement("h2"); h.className = "sec"; h.textContent = sec.title; app.appendChild(h);
+  sec.items.forEach(it => {
+    const card = document.createElement("div"); card.className = "card"; card.id = "c-" + it.id;
+    const head = document.createElement("div"); head.className = "head";
+    const left = document.createElement("div");
+    left.innerHTML = `<div class="label">${esc(it.label)}</div>` + (it.hint ? `<div class="hint">${esc(it.hint)}</div>` : "");
+    head.appendChild(left);
+
+    const right = document.createElement("div");
+    right.style.cssText = "display:flex;gap:10px;align-items:center";
+
+    if (it.type === "ticks"){
+      card.appendChild(head);
+      const box = document.createElement("div"); box.className = "tick";
+      it.groups.forEach(g => {
+        const d = document.createElement("div");
+        d.innerHTML = `<b>${esc(g.name)}</b><div class="chips">` +
+          g.chips.map(c => `<span class="chip${g.no ? " no" : ""}">${esc(c)}</span>`).join("") + `</div>`;
+        box.appendChild(d);
+      });
+      card.appendChild(box);
+      if (it.note){ const n = document.createElement("div"); n.className = "note"; n.textContent = it.note; card.appendChild(n); }
+      app.appendChild(card);
+      return;
+    }
+
+    // copyable
+    let counter = null;
+    if (it.limit || it.tagsLimit){
+      counter = document.createElement("span"); counter.className = "count"; right.appendChild(counter);
+      const n = it.tagsLimit ? it.value.split(",").map(s => s.trim()).filter(Boolean).length : it.value.length;
+      const lim = it.limit || it.tagsLimit;
+      counter.textContent = `${n} / ${lim}` + (it.tagsLimit ? " tags" : "");
+      counter.classList.add(n > lim ? "over" : "ok");
+    }
+    const btn = document.createElement("button"); btn.className = "copy"; btn.textContent = "Copy"; right.appendChild(btn);
+    head.appendChild(right); card.appendChild(head);
+
+    const pre = document.createElement("pre"); pre.className = "val";
+    pre.textContent = it.value; card.appendChild(pre);
+
+    if (it.type === "html"){
+      const tools = document.createElement("div"); tools.className = "tools";
+      const tg = document.createElement("button"); tg.className = "alt"; tg.textContent = "Show rendered preview";
+      const pv = document.createElement("div"); pv.className = "preview"; pv.hidden = true; pv.innerHTML = it.value;
+      tg.onclick = () => { pv.hidden = !pv.hidden; tg.textContent = pv.hidden ? "Show rendered preview" : "Hide preview"; };
+      tools.appendChild(tg); card.appendChild(tools); card.appendChild(pv);
+    }
+    app.appendChild(card);
+
+    const mark = () => { card.classList.add("done"); store.set("rs-done-" + it.id, "1"); update(); };
+    if (store.get("rs-done-" + it.id)) card.classList.add("done");
+    btn.onclick = () => copyText(it.value).then(() => {
+      btn.textContent = "Copied"; btn.classList.add("ok"); mark();
+      setTimeout(() => { btn.textContent = "Copy"; btn.classList.remove("ok"); }, 1400);
+    }).catch(() => { btn.textContent = "Select and press Ctrl+C"; });
+    copyables.push(card);
+  });
+});
+
+function update(){
+  const done = copyables.filter(c => c.classList.contains("done")).length;
+  $("#progtxt").textContent = `${done} / ${copyables.length} copied`;
+  $("#progbar").style.width = (copyables.length ? done / copyables.length * 100 : 0) + "%";
+}
+update();
+</script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+{
+  "name": "RabShoot",
+  "slug": "rabshoot",
+  "version": "0.1.6",
+  "description": "Writes your daily work report from GitLab, GitHub and Slack and emails it on a schedule.",
+  "long_description": "RabShoot is a desktop app that collects the day's commits, merge/pull requests, issues and selected Slack messages, summarizes them with AI (Google Gemini), and emails a branded report from your own mailbox on a schedule. Everything runs on your computer; there is no RabShoot server and no account to create.",
+  "author": {
+    "name": "Mohamed Azmy",
+    "url": "https://linkedin.com/in/mohamed-3zmy/"
+  },
+  "homepage": "https://github.com/A7my/rabshoot",
+  "license": "LicenseRef-Proprietary",
+  "license_file": "LICENSE.md",
+  "category": "Productivity",
+  "keywords": ["daily report", "gitlab", "github", "slack", "ai", "email", "automation", "desktop"],
+  "languages": ["en", "ar"],
+  "platforms": ["windows-x64", "linux-x64"],
+  "app_type": "desktop",
+  "stack": {
+    "shell": "Tauri 2 (Rust)",
+    "ui": "React + TypeScript + Tailwind (Vite)",
+    "engine": "Python 3.11+ (FastAPI, APScheduler, SQLite)"
+  },
+  "requirements": {
+    "python": ">=3.11",
+    "node": ">=20",
+    "rust": "stable (desktop shell only)"
+  },
+  "entry_points": {
+    "engine": "src/engine/rabshoot_engine/__main__.py",
+    "ui": "src/app/",
+    "desktop_shell": "src/app/src-tauri/",
+    "tests": "src/engine/tests/"
+  },
+  "setup": "SETUP.md",
+  "readme": "README.md",
+  "source_dir": "src/",
+  "external_services": ["GitLab API", "GitHub API", "Slack API", "Google Gemini API", "User's own SMTP/IMAP mailbox"],
+  "privacy": "src/docs/privacy.md",
+  "license_key_required": false
+}

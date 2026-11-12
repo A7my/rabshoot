@@ -1,0 +1,71 @@
+{#
+  The report body as editable text: "## " section, "### " project or chat, "• " bullet.
+  Mirrors what report.html.j2 shows; parsed back by render.parse_blocks.
+#}
+{% if projects %}
+## Code changes
+{% for p in projects %}
+
+### {{ p.name }}
+{% if p.error %}
+{{ p.error }}
+{% endif %}
+{% if sections.code_changes and p.changes %}
+{% for c in p.changes %}
+• {{ c }}
+{% endfor %}
+{% endif %}
+{% if (sections.commits or not p.changes) and p.commits %}
+
+Commits:
+{% for c in p.commits[:max_items] %}
+• {{ c.short_id }} {{ c.title }} — {{ c.author }}
+{% endfor %}
+{% endif %}
+{% if sections.merge_requests and p.merge_requests %}
+
+{{ "Merge requests" if p.source == "gitlab" else "Pull requests" }}:
+{% for mr in p.merge_requests[:max_items] %}
+• [{{ mr.action }}] {{ mr.ref }} {{ mr.title }} — {{ mr.author }}
+{% endfor %}
+{% endif %}
+{% if sections.issues and p.issues %}
+
+Issues:
+{% for i in p.issues[:max_items] %}
+• [{{ i.action }}] {{ i.ref }} {{ i.title }}
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% endif %}
+{% if sections.slack and slack_enabled %}
+
+## {{ "Team updates" if ai else "Slack" }}
+{% for conv in failed_conversations %}
+{{ conv.name }}: {{ conv.error }}
+{% endfor %}
+{% for conv in active_conversations %}
+
+### {{ conv.name }}
+{% if "points" in conv %}
+{% for pt in conv.points %}
+• {{ pt }}
+{% endfor %}
+{% elif conv.ai_failed %}
+{{ conv.message_count }} message{{ "" if conv.message_count == 1 else "s" }}, the AI summary was unavailable.
+{% else %}
+{% for t in conv.threads[:max_items] %}
+• {{ t.user }}: {{ t.text | oneline }}
+{% for r in t.replies %}
+• {{ r.user }}: {{ r.text | oneline }}
+{% endfor %}
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% if not active_conversations and not failed_conversations %}
+No work-related updates today.
+{% endif %}
+{% endif %}
+{% if not projects and not (sections.slack and slack_enabled) %}
+No activity found for this day.
+{% endif %}
